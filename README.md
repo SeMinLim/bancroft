@@ -1,1 +1,3 @@
-# dna_compressor
+# DNA Compressor
+## Reference Book
+## Compression
