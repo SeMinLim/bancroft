@@ -28,6 +28,7 @@
      ```
 + GRCH38 / HG38
   1. Download GRCH38
+     
      https://ftp.ensembl.org/pub/release-112/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
   2. Delete 'N'
      ```
