@@ -27,4 +27,29 @@
      sort -k 2 -n -r 32mers.txt > hg19refbook.txt
      ```
 + GRCH38 / HG38
+  1. Download GRCH38
+     https://ftp.ensembl.org/pub/release-112/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+  2. Delete 'N'
+     ```
+     sed "s/N//g" Homo_sapiens.GRCh38.dna.primary_assembly.fa >> grch38_tmp.fasta
+     ```
+  3. Delete white spaces
+     ```
+     sed '/^$/d' grch38_tmp.fasta >> grch38.fasta
+     ```
+  4. Run our code
+     ```
+     ./obj/main
+     ```
+  5. Run KMC
+     ```
+     kmc -k32 hg38.fastq 32mers kmc_tmp
+     ```
+     ```
+     kmc_tools transform 32mers dump 32mers.txt
+     ```
+  6. Sort the file in descending order
+      ```
+      sort -k 2 -n -r 32mers.txt > hg38refbook.txt
+      ```
 ## Compression
