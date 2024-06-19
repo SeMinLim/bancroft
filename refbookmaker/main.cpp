@@ -59,8 +59,8 @@ void fastaMaker( char *filename ) {
 
 
 int main() {
-	char *filenameIn = "../../data/references/grch37.fasta";
-	char *filenameOut = "../../data/references/hg19.fasta";
+	char *filenameIn = "../data/references/grch38.fasta";
+	char *filenameOut = "../data/references/hg38.fasta";
 
 	printf( "Sequence organizing is started!\n" );
 	fflush( stdout );
