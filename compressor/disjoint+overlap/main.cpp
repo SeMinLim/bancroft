@@ -11,6 +11,10 @@
 using namespace std;
 
 
+#define MAXTHREAD 32
+#define KMERLENGTH 32
+
+
 typedef struct RefBook {
 	string kmer;
 	int cnt;
@@ -25,10 +29,9 @@ vector<string> sequences;
 vector<RefBook> reference;
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
-//size_t usedReference = 4194304;
+//size_t usedReference = 131072;
 
 pthread_mutex_t mutex;
-size_t numThread = 32;
 
 
 static inline double timeChecker( void ) {
@@ -74,12 +77,12 @@ void refBookReader( char *filename ) {
 		string kmer;
 		int cnt;
 
-		kmer.reserve(32);		
-		for ( size_t i = 0; i < 32; i ++ ) {
+		kmer.reserve(KMERLENGTH);		
+		for ( size_t i = 0; i < KMERLENGTH; i ++ ) {
 			kmer.push_back(refLine[i]);
 		}
 		
-		refLine.erase(0, 33);
+		refLine.erase(0, KMERLENGTH+1);
 		refLine.shrink_to_fit();
 		cnt = atoi(refLine.c_str());
 
@@ -97,12 +100,12 @@ void refBookReader( char *filename ) {
 
 void *compressor(void *pthreadArg) {
 	PthreadArg *arg = (PthreadArg *)pthreadArg;
-	size_t sp = arg->sp * 32;
-	size_t fp = (sp + (32 * arg->numTask)) - 1;
+	size_t sp = arg->sp * KMERLENGTH;
+	size_t fp = (sp + (KMERLENGTH * arg->numTask)) - 1;
 	
 	size_t flag = 0;
-	while ( sp <= (fp - 31)) {
-		string subseq = sequences[10].substr(sp, 32);
+	while ( sp <= (fp - (KMERLENGTH-1))) {
+		string subseq = sequences[144].substr(sp, KMERLENGTH);
 		for ( size_t j = 0; j < reference.size(); j ++ ) {
 			if ( subseq.compare(reference[j].kmer) == 0 ) {
 				pthread_mutex_lock(&mutex);
@@ -113,7 +116,7 @@ void *compressor(void *pthreadArg) {
 			} else flag = 0;
 		}
 		
-		if ( flag == 1 ) sp += 32;
+		if ( flag == 1 ) sp += KMERLENGTH;
 		else sp += 1;
 	}
 	return 0;
@@ -131,47 +134,62 @@ int main() {
 	refBookReader( filenameR );
 
 	// Compression
-	size_t numKmer = sequences[10].size() / 32;
-	size_t numTask = numKmer / numThread;
-	size_t rmdTask = numKmer % numThread;
+	size_t numKmer = sequences[144].size() / KMERLENGTH;
+	if ( numKmer < 0 ) {
+		printf( "Sequence is shorter than designated kmer length...\n" );
+		printf( "Please reset the kmer length!\n" );
+		fflush( stdout );
+	} else {
+		size_t numThread = 0;
+		size_t numTask = 0;
+		size_t rmdTask = 0;
+		if ( numKmer < MAXTHREAD ) {
+			numTask = 1;
+			numThread = numKmer;
+		} else {
+			numTask = numKmer / MAXTHREAD;
+			rmdTask = numKmer % MAXTHREAD;
+			numThread = MAXTHREAD;
+		}
 
-	pthread_t pthread[32];
-	pthread_mutex_init(&mutex, NULL);
-	PthreadArg pthreadArg[32];
+		pthread_t pthread[MAXTHREAD];
+		pthread_mutex_init(&mutex, NULL);
+		PthreadArg pthreadArg[MAXTHREAD];
 
-	double processStart = timeChecker();
-	// Thread Create
-	for ( size_t i = 0; i < numThread; i ++ ) {
-		size_t sp = i * numTask;
-		pthreadArg[i].sp = sp;
-		if ( i == numThread - 1 ) pthreadArg[i].numTask = numTask + rmdTask;
-		else pthreadArg[i].numTask = numTask;
-
-		pthread_create(&pthread[i], NULL, compressor, (void *)&pthreadArg[i]);
-	}
-	// Thread Join
-	for ( size_t j = 0; j < numThread; j ++ ) {
-		pthread_join(pthread[j], NULL);
-	}
-	// Mutex Destroy
-	pthread_mutex_destroy(&mutex);
-	double processFinish = timeChecker();
-	double elapsedTime = processFinish - processStart;
-
-	printf( "--------------------------------------------\n" );
-	printf( "REFERENCE\n" );
-	printf( "Original Reference Book [#KMER]: %ld\n", reference.size() );
-	printf( "Original Reference Book [Size]: %0.4f GB\n", ((double)reference.size() * 32) / 1024 / 1024 / 1024 );
-	printf( "Used Reference Book Size: %0.4f GB\n", ((double)reference.size() * 32) / 1024 / 1024 / 1024 );
-	printf( "--------------------------------------------\n" );
-	printf( "SEQUENCE\n" );
-	printf( "Original File Size: %0.4f MB\n", (double)sequences[10].size() / 1024 / 1024 );
-	printf( "Number of Base Pairs [Original]: %ld\n", sequences[10].size() );
-	printf( "--------------------------------------------\n" );
-	printf( "COMPRESSION RESULT\n" );
-	printf( "Compressed File Size: %0.4f MB\n", (double)((sequences[10].size() - (seqSizeCmp * 32)) + (seqSizeCmp * 4)) / 1024 / 1024 );
-	printf( "Number of Base Pairs [Compressed]: %ld\n", seqSizeCmp * 32 );
-	printf( "Elapsed Time: %lf\n", elapsedTime );
+		double processStart = timeChecker();
+		// Thread Create
+		for ( size_t i = 0; i < numThread; i ++ ) {
+			size_t sp = i * numTask;
+			pthreadArg[i].sp = sp;
+			if ( i == numThread - 1 ) pthreadArg[i].numTask = numTask + rmdTask;
+			else pthreadArg[i].numTask = numTask;
+	
+			pthread_create(&pthread[i], NULL, compressor, (void *)&pthreadArg[i]);
+		}
+		// Thread Join
+		for ( size_t j = 0; j < numThread; j ++ ) {
+			pthread_join(pthread[j], NULL);
+		}
+		// Mutex Destroy
+		pthread_mutex_destroy(&mutex);
+		double processFinish = timeChecker();
+		double elapsedTime = processFinish - processStart;
+	
+		printf( "--------------------------------------------\n" );
+		printf( "REFERENCE\n" );
+		printf( "Original Reference Book [#KMER]: %ld\n", reference.size() );
+		printf( "Original Reference Book [Size]: %0.4f GB\n", ((double)reference.size() * 32) / 1024 / 1024 / 1024 );
+		printf( "Used Reference Book Size: %0.4f GB\n", ((double)reference.size() * 32) / 1024 / 1024 / 1024 );
+		printf( "--------------------------------------------\n" );
+		printf( "SEQUENCE\n" );
+		printf( "Original File Size: %0.4f MB\n", (double)sequences[144].size() / 1024 / 1024 );
+		printf( "Number of Base Pairs [Original]: %ld\n", sequences[144].size() );
+		printf( "--------------------------------------------\n" );
+		printf( "COMPRESSION RESULT\n" );
+		printf( "Compressed File Size: %0.4f MB\n", (double)((sequences[144].size() - (seqSizeCmp * 32)) + (seqSizeCmp * 4)) / 1024 / 1024 );
+		printf( "Number of Base Pairs [Compressed]: %ld\n", seqSizeCmp * 32 );
+		printf( "Elapsed Time: %lf\n", elapsedTime );
+		}
 
 	return 0;
 }
