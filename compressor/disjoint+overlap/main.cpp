@@ -102,7 +102,7 @@ void *compressor(void *pthreadArg) {
 	
 	size_t flag = 0;
 	while ( sp <= (fp - 31)) {
-		string subseq = sequences[144].substr(sp, 32);
+		string subseq = sequences[10].substr(sp, 32);
 		for ( size_t j = 0; j < reference.size(); j ++ ) {
 			if ( subseq.compare(reference[j].kmer) == 0 ) {
 				pthread_mutex_lock(&mutex);
@@ -131,7 +131,7 @@ int main() {
 	refBookReader( filenameR );
 
 	// Compression
-	size_t numKmer = sequences[144].size() / 32;
+	size_t numKmer = sequences[10].size() / 32;
 	size_t numTask = numKmer / numThread;
 	size_t rmdTask = numKmer % numThread;
 
@@ -162,14 +162,14 @@ int main() {
 	printf( "REFERENCE\n" );
 	printf( "Original Reference Book [#KMER]: %ld\n", reference.size() );
 	printf( "Original Reference Book [Size]: %0.4f GB\n", ((double)reference.size() * 32) / 1024 / 1024 / 1024 );
-	printf( "Used Reference Book Size: %0.4f MB\n", ((double)reference.size() * 32) / 1024 / 1024 / 1024 );
+	printf( "Used Reference Book Size: %0.4f GB\n", ((double)reference.size() * 32) / 1024 / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "SEQUENCE\n" );
-	printf( "Original File Size: %0.4f MB\n", (double)sequences[144].size() / 1024 / 1024 );
-	printf( "Number of Base Pairs [Original]: %ld\n", sequences[144].size() );
+	printf( "Original File Size: %0.4f MB\n", (double)sequences[10].size() / 1024 / 1024 );
+	printf( "Number of Base Pairs [Original]: %ld\n", sequences[10].size() );
 	printf( "--------------------------------------------\n" );
 	printf( "COMPRESSION RESULT\n" );
-	printf( "Compressed File Size: %0.4f MB\n", (double)((sequences[144].size() - (seqSizeCmp * 32)) + (seqSizeCmp * 3)) / 1024 / 1024 );
+	printf( "Compressed File Size: %0.4f MB\n", (double)((sequences[10].size() - (seqSizeCmp * 32)) + (seqSizeCmp * 4)) / 1024 / 1024 );
 	printf( "Number of Base Pairs [Compressed]: %ld\n", seqSizeCmp * 32 );
 	printf( "Elapsed Time: %lf\n", elapsedTime );
 

@@ -90,8 +90,8 @@ void refBookReader( char *filename ) {
 void compressor( void ) {
 	size_t sp = 0;
 	size_t flag = 0;
-	while ( sp <= sequences[144].size() - 32 ) {
-		string subseq = sequences[144].substr(sp, 32);
+	while ( sp <= sequences[25].size() - 32 ) {
+		string subseq = sequences[25].substr(sp, 32);
 		for ( size_t j = 0; j < reference.size(); j ++ ) {
 			if ( subseq.compare(reference[j].kmer) == 0 ) {
 				seqSizeCmp++;
@@ -129,11 +129,11 @@ int main() {
 	printf( "Used Reference Book Size: %0.4f GB\n", ((double)reference.size() * 32) / 1024 / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "SEQUENCE\n" );
-	printf( "Original File Size: %0.4f MB\n", (double)sequences[144].size() / 1024 / 1024 );
-	printf( "Number of Base Pairs [Original]: %ld\n", sequences[144].size() );
+	printf( "Original File Size: %0.4f MB\n", (double)sequences[25].size() / 1024 / 1024 );
+	printf( "Number of Base Pairs [Original]: %ld\n", sequences[25].size() );
 	printf( "--------------------------------------------\n" );
 	printf( "COMPRESSION RESULT\n" );
-	printf( "Compressed File Size: %0.4f MB\n", (double)((sequences[144].size() - (seqSizeCmp * 32)) + (seqSizeCmp * 4)) / 1024 / 1024 );
+	printf( "Compressed File Size: %0.4f MB\n", (double)((sequences[25].size() - (seqSizeCmp * 32)) + (seqSizeCmp * 4)) / 1024 / 1024 );
 	printf( "Number of Base Pairs [Compressed]: %ld\n", seqSizeCmp * 32 );
 	printf( "Elapsed Time: %lf\n", elapsedTime );
 
