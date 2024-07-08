@@ -8,22 +8,28 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
+#include <map>
 #include <unordered_map>
 using namespace std;
 
 
-#define KMERLENGTH 32
+#define KMERLENGTH 24
 
 
 unordered_map<string, int> reference;
 vector<string> sequences;
-size_t seqSizeOrg = 0;
+size_t seqSize = 0;
+size_t refSize = 0;
 
 
 static inline double timeChecker( void ) {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return (double)(tv.tv_sec) + (double)(tv.tv_usec) / 1000000;
+}
+
+bool decendingOrder( pair<string, int>& x, pair<string, int>& y ) {
+	return x.second > y.second;
 }
 
 void fastaReader( char *filename ) {
@@ -42,88 +48,87 @@ void fastaReader( char *filename ) {
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
 			sequences.push_back(seqLine);
-			seqSizeOrg += seqLine.size();
+			seqSize += seqLine.size();
 		}
 		seqLine.clear();
 		seqLine.shrink_to_fit();
 	}
 
 	f_data_sequences.close();
+	printf( "Reading Sequence File is Finished!\n" );
 }
 
 void fastaWriter( char *filename ) {
+	// Sort first before writing the result
+	vector<pair<string, int>> reference_vec(reference.begin(), reference.end());
+	sort(reference_vec.begin(), reference_vec.end(), decendingOrder);
+	printf( "Sorting Task is Finished!\n" );
+
 	ofstream f_data_result(filename);
 	if ( !f_data_result.is_open() ) {
 		printf( "File not found: %s\n", filename );
 		exit(1);
 	}
 
-	for ( auto it = reference.begin(); it != reference.end(); it ++ ) {
-		f_data_result << it->first << "\t" << it->second << "\n";
+	for ( size_t i = 0; i < reference_vec.size(); i ++ ) {
+		f_data_result << reference_vec[i].first << "\t" << reference_vec[i].second << "\n";
 	}
 	f_data_result << endl;
 
 	f_data_result.close();
+	printf( "Writing Reference Book is Finished!\n" );
 }
 
 void kmc( void ) {
+	// K-mer counting
 	for ( size_t i = 0; i < sequences.size(); i ++ ) {
 		for ( size_t j = 0; j < sequences[i].size() - KMERLENGTH + 1; j ++ ) {
 			if ( j % 1000000 == 0 ) printf( "%ld\n", j );
-			string subseq = sequences[i].substr(j, 32);
+			string subseq = sequences[i].substr(j, KMERLENGTH);
 			if ( reference.insert(make_pair(subseq, 1)).second == false ) {
 				reference.at(subseq) += 1;
 			}
 		}
 		printf( "Processing %ld sequence is finished!\n", i );
 	}
-}
+	printf( "KMC is Finished!\n" );
 
-void refOrganizer( void ) {
+	// Erase the elements that have a value as 1
 	for ( auto it = reference.begin(); it != reference.end(); ) {
 		if ( it->second == 1 ) {
-			reference.erase(it);
+			it = reference.erase(it);
 		} else it++;
 	}
+	refSize = reference.size();
+	printf( "Erasing Task is Finished!\n" );
 }
 
 
 int main() {
-	char *filenameS = "../../../data/references/hg19.fasta";
-	char *filenameR = "../../../data/references/hg19RefBookARDA.txt";
+	char *filenameS = "/dfs6/pub/seminl1/DNACompressor/hg19.fasta";
+	char *filenameR = "/dfs6/pub/seminl1/DNACompressor/hg19RefBookARDA.txt";
 	
 	// Read sequence file
 	fastaReader( filenameS );
-	printf( "Read sequence file is finished!\n" );
-	fflush( stdout );
 
 	// Kmer counting
 	double processStartKmc = timeChecker();
 	kmc();
 	double processFinishKmc = timeChecker();
 	double elapsedTimeKmc = processFinishKmc - processStartKmc;
-	printf( "KMC is finished!\n" );
-	fflush( stdout );
 	
-	// Sorting and remove useless kmer
-	double processStartOrg = timeChecker();
-	refOrganizer();
-	double processFinishOrg = timeChecker();
-	double elapsedTimeOrg = processFinishOrg - processStartOrg;
-	printf( "Sorting reference book is finished!\n" );
-	fflush( stdout );
-
-	// Write reference book
+	// Sorting, erasing, and writing
 	fastaWriter( filenameR );
-	printf( "Writing reference book is finished!\n" );
-	fflush( stdout );
 
 	printf( "--------------------------------------------\n" );
 	printf( "KMC RESULT\n" );
-	printf( "Reference Book [KMER]: %ld\n", reference.size() );
-	printf( "Reference Book [Size]: %0.4f GB\n", (double)(reference.size() * 32) / 1024 / 1024 / 1024 );
-	printf( "Elapsed Time: %lf\n", elapsedTimeKmc + elapsedTimeOrg );
+	printf( "KMER [Total]: %ld\n", seqSize );
+	printf( "KMER [Count]: %ld\n", refSize );
+	printf( "KMER [Percentage]: %0.8f\n", (double)refSize / seqSize * 100 );
+	printf( "Reference Book [Size]: %0.4f GB\n", (double)(refSize * 32) / 1024 / 1024 / 1024 );
+	printf( "Elapsed Time: %lf\n", elapsedTimeKmc );
 	printf( "--------------------------------------------\n" );
+	
 	
 	return 0;
 }
