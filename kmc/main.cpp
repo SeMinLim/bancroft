@@ -13,7 +13,7 @@
 using namespace std;
 
 
-#define KMERLENGTH 24
+#define KMERLENGTH 34
 
 
 unordered_map<string, int> reference;
