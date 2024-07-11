@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <unordered_map>
 using namespace std;
 
 
@@ -16,10 +17,6 @@ using namespace std;
 #define TESTSEQ 24
 
 
-typedef struct RefBook {
-	string kmer;
-	int cnt;
-}RefBook;
 typedef struct PthreadArg {
 	size_t seqIdx;
 	size_t thrIdx;
@@ -28,7 +25,7 @@ typedef struct PthreadArg {
 
 
 vector<string> sequences;
-vector<RefBook> reference;
+unordered_map<string, uint32_t> reference;
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
 //size_t usedReference = 131072;
@@ -64,8 +61,6 @@ void fastaReader( char *filename ) {
 }
 
 void refBookReader( char *filename ) {
-	reference.clear();
-	reference.shrink_to_fit();
 	string refLine;
 
 	ifstream f_data_reference(filename);
@@ -74,33 +69,25 @@ void refBookReader( char *filename ) {
 		exit(1);
 	}
 
+	uint32_t index = 0;
 	while ( getline(f_data_reference, refLine) ) {
-		RefBook element;
 		string kmer;
-		int cnt;
-
 		kmer.reserve(KMERLENGTH);		
 		for ( size_t i = 0; i < KMERLENGTH; i ++ ) {
 			kmer.push_back(refLine[i]);
 		}
-		
-		refLine.erase(0, KMERLENGTH+1);
-		refLine.shrink_to_fit();
-		cnt = atoi(refLine.c_str());
-
-		element.kmer = kmer;
-		element.cnt = cnt;
-
-		reference.push_back(element);
-
-		refLine.clear();
-		refLine.shrink_to_fit();
+		if ( reference.insert(make_pair(kmer, index)).second == false ) {
+			printf( "There's an issue on reference code book\n" );
+			exit(1);
+		}
+		index++;
 	}
 
 	f_data_reference.close();
+
 }
 
-void *compressor(void *pthreadArg) {
+void *compressor( void *pthreadArg ) {
 	PthreadArg *arg = (PthreadArg *)pthreadArg;
 	size_t sp = arg->thrIdx * arg->subSeq;
 	size_t fp = 0;
@@ -110,8 +97,9 @@ void *compressor(void *pthreadArg) {
 	size_t flag = 0;
 	while ( sp <= fp - KMERLENGTH) {
 		string subseq = sequences[arg->seqIdx].substr(sp, KMERLENGTH);
-		for ( size_t j = 0; j < reference.size(); j ++ ) {
-			if ( subseq.compare(reference[j].kmer) == 0 ) {
+		for ( auto it = reference.begin(); it != reference.end(); it ++ ) {
+			it = reference.find(subseq);
+			if ( it != reference.end() ) {
 				pthread_mutex_lock(&mutex);
 				seqSizeCmp++;
 				pthread_mutex_unlock(&mutex);
