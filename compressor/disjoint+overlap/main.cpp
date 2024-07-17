@@ -14,6 +14,7 @@ using namespace std;
 
 #define NUMTHREAD 16
 #define KMERLENGTH 10
+#define REFINDEX 20
 #define TESTSEQ 24
 
 
@@ -28,7 +29,8 @@ vector<string> sequences;
 unordered_map<string, uint32_t> reference;
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
-//size_t usedReference = 131072;
+uint64_t varInt = 0;
+//size_t usedReference = 524288;
 
 pthread_mutex_t mutex;
 
@@ -71,6 +73,7 @@ void refBookReader( char *filename ) {
 
 	uint32_t index = 0;
 	while ( getline(f_data_reference, refLine) ) {
+		//if ( index == usedReference ) break;
 		string kmer;
 		kmer.reserve(KMERLENGTH);		
 		for ( size_t i = 0; i < KMERLENGTH; i ++ ) {
@@ -87,6 +90,34 @@ void refBookReader( char *filename ) {
 
 }
 
+uint64_t varIntEncode( uint64_t value, unsigned char *buf ) {
+	uint64_t encodedBytes = 0;
+	do {
+		uint8_t byte = value & 0x7F; 	// Get the lower 7 bits
+		value >>= 7; 			// Shift right by 7 bits
+		if (value > 0) byte |= 0x80; 	// Set the MSB if more bytes follow
+		buf[encodedBytes++] = byte;
+	} while (value > 0);
+	
+	return encodedBytes;
+}
+
+uint64_t varIntDecode( const unsigned char *buf, int *decodedBytes ) {
+	uint64_t value = 0;
+	uint8_t byte = 0;
+	int shift = 0;
+	int i = 0;
+	do {
+		byte = buf[i++];
+		value |= (uint64_t)(byte & 0x7F) << shift;
+		shift += 7;
+	} while (byte & 0x80);
+	
+	*decodedBytes = i;
+	
+	return value;
+}
+
 void *compressor( void *pthreadArg ) {
 	PthreadArg *arg = (PthreadArg *)pthreadArg;
 	size_t sp = arg->thrIdx * arg->subSeq;
@@ -97,16 +128,16 @@ void *compressor( void *pthreadArg ) {
 	size_t flag = 0;
 	while ( sp <= fp - KMERLENGTH) {
 		string subseq = sequences[arg->seqIdx].substr(sp, KMERLENGTH);
-		for ( auto it = reference.begin(); it != reference.end(); it ++ ) {
-			it = reference.find(subseq);
-			if ( it != reference.end() ) {
-				pthread_mutex_lock(&mutex);
-				seqSizeCmp++;
-				pthread_mutex_unlock(&mutex);
-				flag = 1;
-				break;
-			} else flag = 0;
-		}
+		if ( reference.find(subseq) != reference.end() ) {
+			// Variable Integer Scheme
+			//unsigned char buf[10];
+			//uint64_t encodedBytes = varIntEncode((uint64_t)reference.at(subseq), buf);
+			pthread_mutex_lock(&mutex);
+			seqSizeCmp++;
+			//varInt += encodedBytes;
+			pthread_mutex_unlock(&mutex);
+			flag = 1;
+		} else flag = 0;
 		
 		if ( flag == 1 ) sp += KMERLENGTH;
 		else sp += 1;
@@ -151,17 +182,19 @@ int main() {
 
 	printf( "--------------------------------------------\n" );
 	printf( "REFERENCE\n" );
-	printf( "Original Reference Book [#KMER]: %ld\n", reference.size() );
-	printf( "Original Reference Book [Size]: %0.4f MB\n", ((double)reference.size() * KMERLENGTH) / 1024 / 1024 );
-	printf( "Used Reference Book Size: %0.4f MB\n", ((double)reference.size() * KMERLENGTH) / 1024 / 1024 );
+	printf( "Reference Book [#KMER]: %ld\n", reference.size() );
+	printf( "Reference Book [Size]: %0.4f MB\n", ((double)reference.size() * KMERLENGTH) / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "SEQUENCE\n" );
-	printf( "Original File Size: %0.4f MB\n", (double)sequences[TESTSEQ].size() / 1024 / 1024 );
 	printf( "Number of Base Pairs [Original]: %ld\n", sequences[TESTSEQ].size() );
+	printf( "Original File Size: %0.4f MB\n", (double)sequences[TESTSEQ].size() / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "COMPRESSION RESULT\n" );
-	printf( "Compressed File Size: %0.4f MB\n", (double)((sequences[TESTSEQ].size() - (seqSizeCmp * KMERLENGTH)) + (seqSizeCmp * 3)) / 1024 / 1024 );		
 	printf( "Number of Base Pairs [Compressed]: %ld\n", seqSizeCmp * KMERLENGTH );
+	printf( "Compressed File Size [Original]: %0.4f MB\n", 
+		(double)(((sequences[TESTSEQ].size() - (seqSizeCmp * KMERLENGTH)) * 8) + (seqSizeCmp * REFINDEX)) / 8 / 1024 / 1024 );
+	printf( "Compressed File Size [2-b Encd]: %0.4f MB\n", 
+	     	(double)(((sequences[TESTSEQ].size() - (seqSizeCmp * KMERLENGTH)) * 2) + (seqSizeCmp * REFINDEX)) / 8 / 1024 / 1024 );
 	printf( "Elapsed Time: %lf\n", elapsedTime );
 
 	return 0;
