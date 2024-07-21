@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <algorithm>
 #include <unordered_map>
 using namespace std;
 
@@ -27,10 +28,14 @@ typedef struct PthreadArg {
 
 vector<string> sequences;
 unordered_map<string, uint32_t> reference;
+unordered_map<uint32_t, uint32_t> occurrence;
+
+
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
 uint64_t varInt = 0;
 //size_t usedReference = 524288;
+
 
 pthread_mutex_t mutex;
 
@@ -39,6 +44,10 @@ static inline double timeChecker( void ) {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return (double)(tv.tv_sec) + (double)(tv.tv_usec) / 1000000;
+}
+
+bool decendingOrder( pair<uint32_t, uint32_t>& x, pair<uint32_t, uint32_t>& y ) {
+	return x.second > y.second;
 }
 
 void fastaReader( char *filename ) {
@@ -90,6 +99,26 @@ void refBookReader( char *filename ) {
 
 }
 
+void occurWriter( char *filename ) {
+	//Sort first before writing the result
+	vector<pair<uint32_t, uint32_t>> occurrence_vec(occurrence.begin(), occurrence.end());
+	sort(occurrence_vec.begin(), occurrence_vec.end(), decendingOrder);
+
+	// Write the result
+	ofstream f_data_result(filename);
+	if ( !f_data_result.is_open() ) {
+		printf( "File not found: %s\n", filename );
+		exit(1);
+	}
+
+	for ( size_t i = 0; i < occurrence_vec.size(); i ++ ) {
+		f_data_result << occurrence_vec[i].first << "," << occurrence_vec[i].second << "\n";
+	}
+	f_data_result << endl;
+
+	f_data_result.close();
+}
+
 uint64_t varIntEncode( uint64_t value, unsigned char *buf ) {
 	uint64_t encodedBytes = 0;
 	do {
@@ -134,6 +163,9 @@ void *compressor( void *pthreadArg ) {
 			//uint64_t encodedBytes = varIntEncode((uint64_t)reference.at(subseq), buf);
 			pthread_mutex_lock(&mutex);
 			seqSizeCmp++;
+			if ( occurrence.insert(make_pair(reference.at(subseq), 1)).second == false ) {
+				occurrence.at(reference.at(subseq)) += 1;
+			}
 			//varInt += encodedBytes;
 			pthread_mutex_unlock(&mutex);
 			flag = 1;
@@ -149,6 +181,7 @@ void *compressor( void *pthreadArg ) {
 int main() {
 	char *filenameS = "../../data/sequences/hg38.fasta";
 	char *filenameR = "../../data/references/hg19RefBook10Mers.txt";
+	char *filenameO = "histogram.csv";
 
 	// Read sequence file
 	fastaReader( filenameS );
@@ -179,6 +212,9 @@ int main() {
 	pthread_mutex_destroy(&mutex);
 	double processFinish = timeChecker();
 	double elapsedTime = processFinish - processStart;
+
+	// Write the occurrence result
+	occurWriter( filenameO );
 
 	printf( "--------------------------------------------\n" );
 	printf( "REFERENCE\n" );
