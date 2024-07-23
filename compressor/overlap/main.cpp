@@ -7,19 +7,23 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <unordered_map>
+#include <map>
 using namespace std;
 
 
-typedef struct RefBook {
-	string kmer;
-	int cnt;
-}RefBook;
+#define KMERLENGTH 256
+#define REFINDEX 32
+#define TESTSEQ 5
 
 
 vector<string> sequences;
-vector<RefBook> reference;
+unordered_map<string, uint32_t> reference;
+
+
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
+uint32_t refIdx = 0;
 //size_t usedReference = 4194304;
 
 
@@ -30,8 +34,6 @@ static inline double timeChecker( void ) {
 }
 
 void fastaReader( char *filename ) {
-	sequences.clear();
-	sequences.shrink_to_fit();
 	string seqLine;
 
 	ifstream f_data_sequences(filename);
@@ -50,9 +52,8 @@ void fastaReader( char *filename ) {
 	f_data_sequences.close();
 }
 
-void refBookReader( char *filename ) {
+void refBookReader_1( char *filename ) {
 	reference.clear();
-	reference.shrink_to_fit();
 	string refLine;
 
 	ifstream f_data_reference(filename);
@@ -62,59 +63,91 @@ void refBookReader( char *filename ) {
 	}
 
 	while ( getline(f_data_reference, refLine) ) {
-		RefBook element;
 		string kmer;
-		int cnt;
+		kmer.reserve(KMERLENGTH);
 
-		kmer.reserve(32);		
-		for ( size_t i = 0; i < 32; i ++ ) {
+		for ( size_t i = 0; i < KMERLENGTH; i ++ ) {
 			kmer.push_back(refLine[i]);
 		}
-		
-		refLine.erase(0, 33);
-		refLine.shrink_to_fit();
-		cnt = atoi(refLine.c_str());
-
-		element.kmer = kmer;
-		element.cnt = cnt;
-
-		reference.push_back(element);
-
-		refLine.clear();
-		refLine.shrink_to_fit();
+		if ( reference.insert(make_pair(kmer, refIdx)).second == false ) {
+			printf( "There's an issue on reference code book\n" );
+			exit(1);
+		}
+		refIdx++;
 	}
 
 	f_data_reference.close();
 }
 
+bool subseqFinder( string subseq ) {
+	if ( reference.find(subseq) != reference.end() ) {
+		seqSizeCmp++;
+		return true;
+	} else {
+		return false;
+	}
+}
+
 void compressor( void ) {
+	char *filenameRef_1 = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers_1.txt";
+	char *filenameRef_2 = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers_2.txt";
+
 	size_t sp = 0;
-	size_t flag = 0;
-	while ( sp <= sequences[144].size() - 32 ) {
-		string subseq = sequences[144].substr(sp, 32);
-		for ( size_t j = 0; j < reference.size(); j ++ ) {
-			if ( subseq.compare(reference[j].kmer) == 0 ) {
-				seqSizeCmp++;
-				flag = 1;
-				break;
-			} else flag = 0;
-		}
+	bool success = false;	
+	while ( sp <= sequences[TESTSEQ].size() - KMERLENGTH ) {
+		string subseq = sequences[TESTSEQ].substr(sp, KMERLENGTH);
 		
-		if ( flag == 1 ) sp += 32;
-		else sp += 1;
+		// Reference 1
+		refIdx = 0;
+		refBookReader_1(filenameRef_1);
+		success = subseqFinder(subseq);
+		if ( success == true ) {
+			sp += KMERLENGTH;
+		} else {
+			// Reference 2
+			string refLine;
+			ifstream f_data_reference(filenameRef_2);
+			while ( true ) {
+				reference.clear();
+				while ( getline(f_data_reference, refLine) ) {
+					string kmer;
+					kmer.reserve(KMERLENGTH);
+	
+					for ( size_t i = 0; i < KMERLENGTH; i ++ ) {
+						kmer.push_back(refLine[i]);
+					}
+					if ( reference.insert(make_pair(kmer, refIdx)).second == false ) {
+						printf( "There's an issue on reference code book\n" );
+						exit(1);
+					}
+					refIdx++;
+					if ( refIdx % 21923549 == 0  ) break;
+				}
+				printf( "%d\n", refIdx );
+
+				success = subseqFinder(subseq);
+				if ( success == true ) {
+					sp += KMERLENGTH;
+					break;
+				} else {
+					if ( refIdx == 2836860451 ) {
+						sp += 1;
+						break;
+					}
+				}
+			}
+
+			f_data_reference.close();
+		}
 	}
 }
 
 
-int main() {
-	char *filenameS = "../../data/references/hg38.fasta";
-	char *filenameR = "../../data/references/hg19refbook.txt";
+int main( void ) {
+	char *filenameS = "../../data/sequences/hg16.fasta";
 
 	// Read sequence file
 	fastaReader( filenameS );
-
-	// Read reference file
-	refBookReader( filenameR );
 
 	// Compression
 	double processStart = timeChecker();
@@ -124,17 +157,19 @@ int main() {
 
 	printf( "--------------------------------------------\n" );
 	printf( "REFERENCE\n" );
-	printf( "Original Reference Book [#KMER]: %ld\n", reference.size() );
-	printf( "Original Reference Book [Size]: %0.4f GB\n", ((double)reference.size() * 32) / 1024 / 1024 / 1024 );
-	printf( "Used Reference Book Size: %0.4f GB\n", ((double)reference.size() * 32) / 1024 / 1024 / 1024 );
+	printf( "Reference Book [#KMER]: %ld\n", reference.size() );
+	printf( "Reference Book [Size]: %0.4f MB\n", ((double)reference.size() * KMERLENGTH) / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "SEQUENCE\n" );
-	printf( "Original File Size: %0.4f MB\n", (double)sequences[144].size() / 1024 / 1024 );
-	printf( "Number of Base Pairs [Original]: %ld\n", sequences[144].size() );
+	printf( "Number of Base Pairs [Original]: %ld\n", sequences[TESTSEQ].size() );
+	printf( "Original File Size: %0.4f MB\n", (double)sequences[TESTSEQ].size() / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "COMPRESSION RESULT\n" );
-	printf( "Compressed File Size: %0.4f MB\n", (double)((sequences[144].size() - (seqSizeCmp * 32)) + (seqSizeCmp * 4)) / 1024 / 1024 );
-	printf( "Number of Base Pairs [Compressed]: %ld\n", seqSizeCmp * 32 );
+	printf( "Number of Base Pairs [Compressed]: %ld\n", seqSizeCmp * KMERLENGTH );
+	printf( "Compressed File Size [Original]: %0.4f MB\n", 
+		(double)(((sequences[TESTSEQ].size() - (seqSizeCmp * KMERLENGTH)) * 8) + (seqSizeCmp * REFINDEX)) / 8 / 1024 / 1024 );
+	printf( "Compressed File Size [2-b Encd]: %0.4f MB\n", 
+	     	(double)(((sequences[TESTSEQ].size() - (seqSizeCmp * KMERLENGTH)) * 2) + (seqSizeCmp * REFINDEX)) / 8 / 1024 / 1024 );
 	printf( "Elapsed Time: %lf\n", elapsedTime );
 
 	return 0;
