@@ -15,16 +15,26 @@ using namespace std;
 #define KMERLENGTH 256
 #define REFINDEX 32
 #define TESTSEQ 5
+#define ENCKMERBUFUNIT 32
+#define ENCKMERBUFSIZE 8
+#define BINARYRWUNIT 8
 
 
 vector<string> sequences;
-unordered_map<string, uint32_t> reference;
+unordered_map<uint64_t, uint8_t> ref_1;
+unordered_map<uint64_t, uint8_t> ref_2;
+unordered_map<uint64_t, uint8_t> ref_3;
+unordered_map<uint64_t, uint8_t> ref_4;
+unordered_map<uint64_t, uint8_t> ref_5;
+unordered_map<uint64_t, uint8_t> ref_6;
+unordered_map<uint64_t, uint8_t> ref_7;
+unordered_map<uint64_t, uint8_t> ref_8;
 
 
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
-uint32_t refIdx = 0;
-//size_t usedReference = 4194304;
+uint64_t refSizeOrg = 2836860451;
+uint64_t refSizeUsd = 650000000;
 
 
 static inline double timeChecker( void ) {
@@ -33,15 +43,10 @@ static inline double timeChecker( void ) {
 	return (double)(tv.tv_sec) + (double)(tv.tv_usec) / 1000000;
 }
 
-void fastaReader( char *filename ) {
+void seqReader( char *filename ) {
 	string seqLine;
 
 	ifstream f_data_sequences(filename);
-	if ( !f_data_sequences.is_open() ) {
-		printf( "File not found: %s\n", filename );
-		exit(1);
-	}
-
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
 			sequences.push_back(seqLine);
@@ -51,103 +56,112 @@ void fastaReader( char *filename ) {
 
 	f_data_sequences.close();
 }
-
-void refBookReader_1( char *filename ) {
-	reference.clear();
-	string refLine;
-
-	ifstream f_data_reference(filename);
-	if ( !f_data_reference.is_open() ) {
-		printf( "File not found: %s\n", filename );
-		exit(1);
-	}
-
-	while ( getline(f_data_reference, refLine) ) {
-		string kmer;
-		kmer.reserve(KMERLENGTH);
-
-		for ( size_t i = 0; i < KMERLENGTH; i ++ ) {
-			kmer.push_back(refLine[i]);
-		}
-		if ( reference.insert(make_pair(kmer, refIdx)).second == false ) {
-			printf( "There's an issue on reference code book\n" );
-			exit(1);
-		}
-		refIdx++;
+void refReader( char *filename ) {
+	ifstream f_data_reference(filename, ios::binary);
+	for ( uint64_t i = 0; i < refSizeUsd; i ++ ) {
+		uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
+		// Reference 1
+		f_data_reference.read(reinterpret_cast<char *>(&encKmer[0]), BINARYRWUNIT);
+		ref_1.insert(make_pair(encKmer[0], 1));
+		// Reference 2
+		f_data_reference.read(reinterpret_cast<char *>(&encKmer[1]), BINARYRWUNIT);
+		ref_2.insert(make_pair(encKmer[1], 1));
+		// Reference 3
+		f_data_reference.read(reinterpret_cast<char *>(&encKmer[2]), BINARYRWUNIT);
+		ref_3.insert(make_pair(encKmer[2], 1));
+		// Reference 4
+		f_data_reference.read(reinterpret_cast<char *>(&encKmer[3]), BINARYRWUNIT);
+		ref_4.insert(make_pair(encKmer[3], 1));
+		// Reference 5
+		f_data_reference.read(reinterpret_cast<char *>(&encKmer[4]), BINARYRWUNIT);
+		ref_5.insert(make_pair(encKmer[4], 1));
+		// Reference 6
+		f_data_reference.read(reinterpret_cast<char *>(&encKmer[5]), BINARYRWUNIT);
+		ref_6.insert(make_pair(encKmer[5], 1));
+		// Reference 7
+		f_data_reference.read(reinterpret_cast<char *>(&encKmer[6]), BINARYRWUNIT);
+		ref_7.insert(make_pair(encKmer[6], 1));
+		// Reference 8
+		f_data_reference.read(reinterpret_cast<char *>(&encKmer[7]), BINARYRWUNIT);
+		ref_8.insert(make_pair(encKmer[7], 1));
+		if ( i % 1000000 == 0 ) printf( "Reference: %ld\n", i );
 	}
 
 	f_data_reference.close();
 }
 
-bool subseqFinder( string subseq ) {
-	if ( reference.find(subseq) != reference.end() ) {
-		seqSizeCmp++;
-		return true;
-	} else {
-		return false;
+void encoder( string seqLine, uint64_t *encKmer ) {
+	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
+		encKmer[i] = 0;
+		for ( uint64_t j = 0; j < ENCKMERBUFUNIT; j ++ ) {
+			if ( seqLine[ENCKMERBUFUNIT*i + j] == 'A' ) {
+				encKmer[i] = ((uint64_t)0 << 2 * j) | encKmer[i];
+			} else if ( seqLine[ENCKMERBUFUNIT*i + j] == 'C' ) {
+				encKmer[i] = ((uint64_t)1 << 2 * j) | encKmer[i];
+			} else if ( seqLine[ENCKMERBUFUNIT*i + j] == 'G' ) {
+				encKmer[i] = ((uint64_t)2 << 2 * j) | encKmer[i];
+			} else if ( seqLine[ENCKMERBUFUNIT*i + j] == 'T' ) {
+				encKmer[i] = ((uint64_t)3 << 2 * j) | encKmer[i];
+			}
+		}
+	}
+}
+void decoder( const uint64_t *encKmer, string &seqLine ) {
+	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
+		for ( uint64_t j = 0; j < ENCKMERBUFUNIT; j ++ ) {
+			uint64_t encCharT = encKmer[i] << (ENCKMERBUFUNIT - 1 - j) * 2;
+			uint64_t encCharF = encCharT >> (ENCKMERBUFUNIT - 1) * 2;
+			if ( encCharF == 0 ) seqLine.push_back('A');
+			else if ( encCharF == 1 ) seqLine.push_back('C');
+			else if ( encCharF == 2 ) seqLine.push_back('G');
+			else if ( encCharF == 3 ) seqLine.push_back('T');
+		}
 	}
 }
 
 void compressor( void ) {
-	char *filenameRef_1 = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers_1.txt";
-	char *filenameRef_2 = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers_2.txt";
+	//printf( "%ld\n", sequences[TESTSEQ].size() );
+	uint64_t start = 0;
+	while ( start <= sequences[TESTSEQ].size() - KMERLENGTH ) {
+		string subseq = sequences[TESTSEQ].substr(start, KMERLENGTH);
+		//printf( "%ld\n", start );
 
-	size_t sp = 0;
-	bool success = false;	
-	while ( sp <= sequences[TESTSEQ].size() - KMERLENGTH ) {
-		string subseq = sequences[TESTSEQ].substr(sp, KMERLENGTH);
-		
-		// Reference 1
-		refIdx = 0;
-		refBookReader_1(filenameRef_1);
-		success = subseqFinder(subseq);
-		if ( success == true ) {
-			sp += KMERLENGTH;
-		} else {
-			// Reference 2
-			string refLine;
-			ifstream f_data_reference(filenameRef_2);
-			while ( true ) {
-				reference.clear();
-				while ( getline(f_data_reference, refLine) ) {
-					string kmer;
-					kmer.reserve(KMERLENGTH);
-	
-					for ( size_t i = 0; i < KMERLENGTH; i ++ ) {
-						kmer.push_back(refLine[i]);
-					}
-					if ( reference.insert(make_pair(kmer, refIdx)).second == false ) {
-						printf( "There's an issue on reference code book\n" );
-						exit(1);
-					}
-					refIdx++;
-					if ( refIdx % 21923549 == 0  ) break;
-				}
-				printf( "%d\n", refIdx );
+		// Encode first
+		uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
+		encoder(subseq, encSubseq);
 
-				success = subseqFinder(subseq);
-				if ( success == true ) {
-					sp += KMERLENGTH;
-					break;
-				} else {
-					if ( refIdx == 2836860451 ) {
-						sp += 1;
-						break;
-					}
-				}
-			}
-
-			f_data_reference.close();
-		}
+		// Check possible to compress
+		if ( ref_1.find(encSubseq[0]) != ref_1.end() ) {
+			if ( ref_2.find(encSubseq[1]) != ref_2.end() ) {
+				if ( ref_3.find(encSubseq[2]) != ref_3.end() ) {
+					if ( ref_4.find(encSubseq[3]) != ref_4.end() ) {
+						if ( ref_5.find(encSubseq[4]) != ref_5.end() ) {
+							if ( ref_6.find(encSubseq[5]) != ref_6.end() ) {
+								if ( ref_7.find(encSubseq[6]) != ref_7.end() ) {
+									if ( ref_8.find(encSubseq[7]) != ref_8.end() ) {
+										seqSizeCmp ++;
+										start += KMERLENGTH;
+									} else start += 1;
+								} else start += 1;
+							} else start += 1;
+						} else start += 1;
+					} else start += 1;
+				} else start += 1;
+			} else start += 1;
+		} else start += 1;
 	}
 }
 
 
 int main( void ) {
-	char *filenameS = "../../data/sequences/hg16.fasta";
+	char *filenameS = "/home/semin/dna_compressor/data/sequences/hg16.fasta";
+	char *filenameR = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers.bin";
 
 	// Read sequence file
-	fastaReader( filenameS );
+	seqReader( filenameS );
+
+	// Read reference file
+	refReader( filenameR );
 
 	// Compression
 	double processStart = timeChecker();
@@ -157,8 +171,8 @@ int main( void ) {
 
 	printf( "--------------------------------------------\n" );
 	printf( "REFERENCE\n" );
-	printf( "Reference Book [#KMER]: %ld\n", reference.size() );
-	printf( "Reference Book [Size]: %0.4f MB\n", ((double)reference.size() * KMERLENGTH) / 1024 / 1024 );
+	printf( "Reference Book [#KMER]: %ld\n", refSizeUsd );
+	printf( "Reference Book [Size]: %0.4f MB\n", ((double)refSizeUsd * KMERLENGTH) / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "SEQUENCE\n" );
 	printf( "Number of Base Pairs [Original]: %ld\n", sequences[TESTSEQ].size() );

@@ -10,7 +10,9 @@
 #include <string>
 #include <algorithm>
 #include <unordered_map>
+#include <boost/multiprecision/cpp_int.hpp>
 using namespace std;
+using namespace boost::multiprecision;
 
 
 #define KMERLENGTH 256
