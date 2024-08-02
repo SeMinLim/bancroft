@@ -13,6 +13,7 @@ using namespace std;
 
 
 #define KMERLENGTH 256
+#define STRIDE 1
 #define REFINDEX 32
 #define TESTSEQ 5
 #define ENCKMERBUFUNIT 32
@@ -123,11 +124,9 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 }
 
 void compressor( void ) {
-	//printf( "%ld\n", sequences[TESTSEQ].size() );
 	uint64_t start = 0;
 	while ( start <= sequences[TESTSEQ].size() - KMERLENGTH ) {
 		string subseq = sequences[TESTSEQ].substr(start, KMERLENGTH);
-		//printf( "%ld\n", start );
 
 		// Encode first
 		uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
@@ -144,14 +143,14 @@ void compressor( void ) {
 									if ( ref_8.find(encSubseq[7]) != ref_8.end() ) {
 										seqSizeCmp ++;
 										start += KMERLENGTH;
-									} else start += 1;
-								} else start += 1;
-							} else start += 1;
-						} else start += 1;
-					} else start += 1;
-				} else start += 1;
-			} else start += 1;
-		} else start += 1;
+									} else start += STRIDE;
+								} else start += STRIDE;
+							} else start += STRIDE;
+						} else start += STRIDE;
+					} else start += STRIDE;
+				} else start += STRIDE;
+			} else start += STRIDE;
+		} else start += STRIDE;
 	}
 }
 
