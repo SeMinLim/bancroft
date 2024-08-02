@@ -34,7 +34,7 @@ unordered_map<uint64_t, uint8_t> ref_8;
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
 uint64_t refSizeOrg = 2836860451;
-uint64_t refSizeUsd = 650000000;
+uint64_t refSizeUsd = 2836860451;
 
 
 static inline double timeChecker( void ) {
@@ -84,7 +84,10 @@ void refReader( char *filename ) {
 		// Reference 8
 		f_data_reference.read(reinterpret_cast<char *>(&encKmer[7]), BINARYRWUNIT);
 		ref_8.insert(make_pair(encKmer[7], 1));
-		if ( i % 1000000 == 0 ) printf( "Reference: %ld\n", i );
+		if ( i % 1000000 == 0 ) {
+			printf( "Reference: %ld\n", i );
+			fflush( stdout );
+		}
 	}
 
 	f_data_reference.close();
@@ -154,8 +157,8 @@ void compressor( void ) {
 
 
 int main( void ) {
-	char *filenameS = "/home/semin/dna_compressor/data/sequences/hg16.fasta";
-	char *filenameR = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers.bin";
+	char *filenameS = "/mnt/ephemeral/hg16.fasta";
+	char *filenameR = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
@@ -172,7 +175,7 @@ int main( void ) {
 	printf( "--------------------------------------------\n" );
 	printf( "REFERENCE\n" );
 	printf( "Reference Book [#KMER]: %ld\n", refSizeUsd );
-	printf( "Reference Book [Size]: %0.4f MB\n", ((double)refSizeUsd * KMERLENGTH) / 1024 / 1024 );
+	printf( "Reference Book [Size]: %0.4f GB\n", ((double)refSizeUsd * KMERLENGTH) / 1024 / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "SEQUENCE\n" );
 	printf( "Number of Base Pairs [Original]: %ld\n", sequences[TESTSEQ].size() );
