@@ -15,7 +15,6 @@ using namespace std;
 #define KMERLENGTH 256
 #define STRIDE 256
 #define REFINDEX 32
-#define TESTSEQ 5
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 8
 #define BINARYRWUNIT 8
@@ -105,20 +104,25 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 
 // Compressor
 void compressor( void ) {
-	uint64_t start = 0;
-	while ( start <= sequences[TESTSEQ].size() - KMERLENGTH ) {
-		string subseq = sequences[TESTSEQ].substr(start, KMERLENGTH);
+	for ( uint32_t seqIdx = 0; seqIdx < sequences.size() - 1; seqIdx ++ ) {
+		uint64_t start = 0;
+		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
+			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
 
-		// Encode first
-		uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
-		encoder(subseq, encSubseq);
+			// Encode first
+			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
+			encoder(subseq, encSubseq);
 
-		// Check possible to compress
-		if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], make_pair(encSubseq[3],
-				    make_pair(encSubseq[4], make_pair(encSubseq[5], make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
-			seqSizeCmp ++;
-			start += KMERLENGTH;
-		} else start += STRIDE;
+			// Check possible to compress
+			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
+					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
+					    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
+				seqSizeCmp ++;
+				start += KMERLENGTH;
+			} else start += STRIDE;
+		}
+		printf( "Compressing #%d Sequences is Done!\n", seqIdx );
+		fflush( stdout );
 	}
 }
 
@@ -145,15 +149,15 @@ int main( void ) {
 	printf( "Reference Book [Size]: %0.4f GB\n", ((double)refSizeUsd * KMERLENGTH) / 1024 / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "SEQUENCE\n" );
-	printf( "Number of Base Pairs [Original]: %ld\n", sequences[TESTSEQ].size() );
-	printf( "Original File Size: %0.4f MB\n", (double)sequences[TESTSEQ].size() / 1024 / 1024 );
+	printf( "Number of Base Pairs [Original]: %ld\n", seqSizeOrg );
+	printf( "Original File Size: %0.4f MB\n", (double)seqSizeOrg / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "COMPRESSION RESULT\n" );
 	printf( "Number of Base Pairs [Compressed]: %ld\n", seqSizeCmp * KMERLENGTH );
 	printf( "Compressed File Size [Original]: %0.4f MB\n", 
-		(double)(((sequences[TESTSEQ].size() - (seqSizeCmp * KMERLENGTH)) * 8) + (seqSizeCmp * REFINDEX)) / 8 / 1024 / 1024 );
+		(double)(((seqSizeOrg - (seqSizeCmp * KMERLENGTH)) * 8) + (seqSizeCmp * REFINDEX)) / 8 / 1024 / 1024 );
 	printf( "Compressed File Size [2-b Encd]: %0.4f MB\n", 
-	     	(double)(((sequences[TESTSEQ].size() - (seqSizeCmp * KMERLENGTH)) * 2) + (seqSizeCmp * REFINDEX)) / 8 / 1024 / 1024 );
+	     	(double)(((seqSizeOrg - (seqSizeCmp * KMERLENGTH)) * 2) + (seqSizeCmp * REFINDEX)) / 8 / 1024 / 1024 );
 	printf( "Elapsed Time: %lf\n", elapsedTime );
 
 	return 0;
