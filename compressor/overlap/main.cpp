@@ -28,7 +28,7 @@ map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, p
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
 uint64_t refSizeOrg = 2836860451;
-uint64_t refSizeUsd = 1745000000;
+uint64_t refSizeUsd = 268435456;
 
 
 // Time Checker
@@ -114,8 +114,9 @@ void compressor( void ) {
 		encoder(subseq, encSubseq);
 
 		// Check possible to compress
-		if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], make_pair(encSubseq[3],
-				    make_pair(encSubseq[4], make_pair(encSubseq[5], make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
+		if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
+				    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
+				    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
 			seqSizeCmp ++;
 			start += KMERLENGTH;
 		} else start += STRIDE;

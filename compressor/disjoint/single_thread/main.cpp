@@ -27,7 +27,7 @@ map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, p
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
 uint64_t refSizeOrg = 2836860451;
-uint64_t refSizeUsd = 2836860451;
+uint64_t refSizeUsd = 268435456;
 
 
 // Time Checker

@@ -20,8 +20,9 @@ using namespace std;
 #define RDCREFSIZE 268435456
 
 
-map<uint32_t, vector<uint64_t>> reference;
+map<uint32_t, vector<uint64_t>> referenceOrg;
 multimap<uint32_t, uint32_t> reference32b;
+vector<uint64_t> referenceRdc;
 
 
 uint32_t refSizeOrg = 2836860451;
@@ -44,11 +45,11 @@ void refReader( char *filename ) {
 			f_reference_original.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
 		
-		// Insert 256-Mers to Map
-		reference[i] = vector<uint64_t>{encKmer[0], encKmer[1], encKmer[2], encKmer[3], 
-						encKmer[4], encKmer[5], encKmer[6], encKmer[7]};
+		// Insert 256-mers to MAP
+		referenceOrg[i] = vector<uint64_t>{encKmer[0], encKmer[1], encKmer[2], encKmer[3], 
+			   			   encKmer[4], encKmer[5], encKmer[6], encKmer[7]};
 		
-		// Insert 32-bit Portion of 256-mers to MultiMap
+		// Insert 32-bit portion of 256-mers to MULTIMAP
 		uint64_t encKmerTmp1 = encKmer[0] << 32;
 		uint64_t encKmerTmp2 = encKmerTmp1 >> 32;
 		uint32_t encKmer32Bits = (uint32_t)encKmerTmp2;
@@ -67,53 +68,56 @@ void refReader( char *filename ) {
 
 void refShrinker( void ) {
 	for ( uint32_t i = 0; i < refSizeRdc; i ++ ) {
-		if ( refSizeRdc % 1000000 == 0 ) {
-			printf( "Reduced Reference: %u\n", i );
-			fflush( stdout );
-		}
-
-		auto begin = reference.begin();
-
-		// Verification Purpose
-		if ( i == 0 ) {
-			for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
-				verification_x[j] = begin->second[j];
+		if ( referenceOrg.size() == 0 ) {
+			break;
+		} else {
+			if ( i % 1000000 == 0 ) {
+				printf( "Reduced Reference: %u\n", i );
+				fflush( stdout );
 			}
+
+			// Get the first element of original reference [MAP]
+			// Store the element to the reduced reference [VECTOR]
+			auto begin = referenceOrg.begin();
+			for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
+				referenceRdc.push_back(begin->second[j]);
+			}
+	
+			// Verification purpose
+			if ( i == 0 ) {
+				for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
+					verification_x[j] = begin->second[j];
+				}
+			}
+
+			// Get the index of elements that has the same 32-bit LSB portion via MULTIMAP
+			// Delete the elements at MAP
+			// Delete the elements at MULTIMAP
+			uint64_t encKmerTmp1 = begin->second[0] << 32;
+			uint64_t encKmerTmp2 = encKmerTmp1 >> 32;
+			uint32_t encKmer32Bits = (uint32_t)encKmerTmp2;
+			for ( auto iter = reference32b.lower_bound(encKmer32Bits); 
+				   iter != reference32b.upper_bound(encKmer32Bits); 
+				   iter ++ ) {
+				referenceOrg.erase(iter->second);
+			}
+			reference32b.erase(encKmer32Bits);
+
+			refInstCnt ++;
 		}
-
-		uint64_t encKmerTmp1 = begin->second[0] << 32;
-		uint64_t encKmerTmp2 = encKmerTmp1 >> 32;
-		uint32_t encKmer32Bits = (uint32_t)encKmerTmp2;
-
-		vector<uint32_t> index;
-		for ( auto iter = reference32b.lower_bound(encKmer32Bits); 
-			   iter != reference32b.upper_bound(encKmer32Bits); ) {
-			index.push_back(iter->second);
-			reference32b.erase(iter);
-		}
-
-		sort(index.begin(), index.end());
-
-		for ( uint32_t j = 1; j < index.size(); j ++ ) {
-			reference.erase(index[j]);
-		}
-		
-		begin ++;
 	}
 
 	printf( "Shrinking Reference File is Done!\n" );
+	printf( "Reduced Reference: %u\n", refInstCnt );
 	fflush( stdout );
 }
 
 void refWriter( char *filename ) {
-	auto iter = reference.begin();
-
 	ofstream f_reference_reduced(filename, ios::binary);
-	for ( uint32_t i = 0; i < refSizeRdc;  i ++ ) {
+	for ( uint32_t i = 0; i < refInstCnt;  i ++ ) {
 		for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
-			f_reference_reduced.write(reinterpret_cast<char *>(&iter->second[j]), BINARYRWUNIT);
+			f_reference_reduced.write(reinterpret_cast<char *>(&referenceRdc[i*ENCKMERBUFSIZE + j]), BINARYRWUNIT);
 		}
-		iter++;
 	}
 
 	f_reference_reduced.close();
@@ -146,7 +150,9 @@ int main( void ) {
 	for ( uint32_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		if ( verification_x[i] != verification_y[i] ) cnt ++;
 	}
-	printf( "%u\n", cnt );
+	if ( cnt == 0 ) printf( "Writing the Reduced Reference File is succeeded\n" );
+	else printf( "Writing the Reduced Reference File is Failure\n" );
+	fflush( stdout );
 
 	return 0;
 }
