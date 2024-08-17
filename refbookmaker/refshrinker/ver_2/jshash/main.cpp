@@ -45,15 +45,12 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 	}
 }
 
-uint32_t rsHash( const char *str ) {
-	uint32_t b = 378551;
-	uint32_t a = 63689;
-	uint32_t hash = 0;
+uint32_t jsHash( const char *str ) {
+	uint32_t hash = 1315423911;
 	uint32_t i = 0;
 
 	for ( i = 0; i < KMERLENGTH; ++str, ++i ) {
-		hash = hash*a + (*str);
-		a = a * b;
+		hash ^= ((hash << 5) + (*str) + (hash >> 2));
 	}
 
 	return hash;
@@ -73,7 +70,7 @@ void refShrinker( char *filename ) {
 		string decoded;
 		decoder( encKmer, decoded );
 		const char *str = decoded.c_str();
-		uint32_t hashed = rsHash( str );
+		uint32_t hashed = jsHash( str );
 
 		// Insert 32-bit hashed value to UNORDERED_MAP
 		if ( referenceRdcX.insert(make_pair(hashed, i)).second == true ) {
@@ -120,7 +117,7 @@ void refWriter( char *filename ) {
 
 int main( void ) {
 	char *filenameOriginal = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
-	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers256MHashed.bin";
+	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers_256M_JSHash.bin";
 
 	// Shrink Original Reference File
 	refShrinker( filenameOriginal );
