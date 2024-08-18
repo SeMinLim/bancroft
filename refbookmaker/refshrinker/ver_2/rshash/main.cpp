@@ -25,7 +25,9 @@ vector<uint64_t> referenceRdcY;
 
 
 uint32_t refSizeOrg = 2836860451;
-uint32_t refSizeRdc = 536870912;
+uint32_t refSizeRdc = 268435456;
+uint32_t refSizeRead = 0;
+uint32_t refSizeInst = 0;
 
 
 uint64_t verification_x[ENCKMERBUFSIZE] = {0, };
@@ -61,13 +63,15 @@ uint32_t rsHash( const char *str ) {
 
 void refShrinker( char *filename ) {
 	ifstream f_reference_original(filename, ios::binary);
-	for ( uint32_t i = 0; i < refSizeRdc; ) {
+	while ( refSizeInst < refSizeRdc ) {
 		uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
 
 		// Read
+		if ( refSizeRead == refSizeOrg ) break;
 		for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
 			f_reference_original.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
+		refSizeRead ++;
 
 		// Do decoding and apply RSHash
 		string decoded;
@@ -76,9 +80,9 @@ void refShrinker( char *filename ) {
 		uint32_t hashed = rsHash( str );
 
 		// Insert 32-bit hashed value to UNORDERED_MAP
-		if ( referenceRdcX.insert(make_pair(hashed, i)).second == true ) {
+		if ( referenceRdcX.insert(make_pair(hashed, refSizeInst)).second == true ) {
 			// Verification purpose
-			if ( i == 0 ) {
+			if ( refSizeInst == 0 ) {
 				for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
 					verification_x[j] = encKmer[j];
 				}
@@ -87,17 +91,23 @@ void refShrinker( char *filename ) {
 			for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
 				referenceRdcY.push_back(encKmer[j]);
 			}
-
-			i ++;
+			/*	
+			if ( refSizeInst % 1000000 == 0 ) {
+				printf( "Reduced Reference: %u, Read: %u\n", refSizeInst, refSizeRead );
+				fflush( stdout );
+			}
+			*/
+			refSizeInst ++;
 		}
 
-		if ( i % 1000000 == 0 ) {
-			printf( "Reduced Reference: %u\n", i );
+		if ( refSizeRead % 1000000 == 0 ) {
+			printf( "Read: %u, Reduced Reference: %u\n", refSizeRead, refSizeInst );
 			fflush( stdout );
 		}
 	}
 
 	f_reference_original.close();
+	printf( "Reduced Reference: %u\n", refSizeInst );
 	printf( "Making Reduced Reference Book is Done!\n" );
 	fflush( stdout );
 }
@@ -105,7 +115,7 @@ void refShrinker( char *filename ) {
 void refWriter( char *filename ) {
 	// Write the result
 	ofstream f_reference_reduced(filename, ios::binary);
-	for ( uint32_t i = 0; i < refSizeRdc;  i ++ ) {
+	for ( uint32_t i = 0; i < refSizeInst;  i ++ ) {
 		for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
 			f_reference_reduced.write(reinterpret_cast<char *>(&referenceRdcY[i*ENCKMERBUFSIZE + j]), BINARYRWUNIT);
 		}
@@ -120,7 +130,7 @@ void refWriter( char *filename ) {
 
 int main( void ) {
 	char *filenameOriginal = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
-	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers256MHashed.bin";
+	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers_256M_RSHash.bin";
 
 	// Shrink Original Reference File
 	refShrinker( filenameOriginal );
