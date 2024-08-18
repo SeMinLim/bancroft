@@ -98,13 +98,18 @@ void refShrinker( char *filename ) {
 			for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
 				referenceRdcY.push_back(encKmer[j]);
 			}
-			
+			/*	
 			if ( refSizeInst % 1000000 == 0 ) {
 				printf( "Reduced Reference: %u, Read: %u\n", refSizeInst, refSizeRead );
 				fflush( stdout );
 			}
-
+			*/
 			refSizeInst ++;
+		}
+
+		if ( refSizeRead % 1000000 == 0 ) {
+			printf( "Read: %u, Reduced Reference: %u\n", refSizeRead, refSizeInst );
+			fflush( stdout );
 		}
 	}
 
