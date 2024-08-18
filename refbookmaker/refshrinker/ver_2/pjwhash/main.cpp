@@ -80,7 +80,7 @@ void refShrinker( char *filename ) {
 		}
 		refSizeRead ++;
 
-		// Do decoding and apply RSHash
+		// Do decoding and apply PJWHash
 		string decoded;
 		decoder( encKmer, decoded );
 		const char *str = decoded.c_str();
