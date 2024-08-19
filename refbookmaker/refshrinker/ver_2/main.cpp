@@ -20,103 +20,71 @@ using namespace std;
 #define RDCREFSIZE 268435456
 
 
-map<uint32_t, vector<uint64_t>> referenceOrg;
-multimap<uint32_t, uint32_t> reference32b;
-vector<uint64_t> referenceRdc;
+unordered_map<uint32_t, uint8_t> referenceRdcX;
+vector<uint64_t> referenceRdcY;
 
 
 uint32_t refSizeOrg = 2836860451;
-uint32_t refSizeUsd = 2836860451;
-uint32_t refSizeRdc = 268435456;
-uint32_t refInstCnt = 0;
+uint32_t refSizeRdc = 1073741824;
+uint32_t refSizeRead = 0;
+uint32_t refSizeInst = 0;
 
 
 uint64_t verification_x[ENCKMERBUFSIZE] = {0, };
 uint64_t verification_y[ENCKMERBUFSIZE] = {0, };
 
 
-void refReader( char *filename ) {
+void refShrinker( char *filename ) {
 	ifstream f_reference_original(filename, ios::binary);
-	for ( uint32_t i = 0; i < refSizeUsd; i ++ ) {
+	while ( refSizeInst < refSizeRdc ) {
 		uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
 
 		// Read
+		if ( refSizeRead == refSizeOrg ) break;
 		for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
 			f_reference_original.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
+		refSizeRead ++;
 		
-		// Insert 256-mers to MAP
-		referenceOrg[i] = vector<uint64_t>{encKmer[0], encKmer[1], encKmer[2], encKmer[3], 
-			   			   encKmer[4], encKmer[5], encKmer[6], encKmer[7]};
-		
-		// Insert 32-bit portion of 256-mers to MULTIMAP
+		// Pick LSB 32-bit
 		uint64_t encKmerTmp1 = encKmer[0] << 32;
 		uint64_t encKmerTmp2 = encKmerTmp1 >> 32;
 		uint32_t encKmer32Bits = (uint32_t)encKmerTmp2;
-		reference32b.insert(make_pair(encKmer32Bits, i));
-		
-		if ( i % 1000000 == 0 ) {
-			printf( "Reference: %u\n", i );
+	
+		// Insert LSB 32-bit value to UNORDERED_MAP
+		if ( referenceRdcX.insert(make_pair(encKmer32Bits, 1)).second == true ) {
+			// Verification purpose
+			if ( refSizeInst == 0 ) {
+				for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
+					verification_x[j] = encKmer[j];
+				}
+			}
+
+			for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
+				referenceRdcY.push_back(encKmer[j]);
+			}
+
+			refSizeInst ++;
+		}
+
+		if ( refSizeRead % 1000000 == 0 ) {
+			printf( "read: %u, Reduced Reference: %u\n", refSizeRead, refSizeInst );
 			fflush( stdout );
 		}
 	}
 
 	f_reference_original.close();
+	printf( "Reduced Reference: %u\n", refSizeInst );
 	printf( "Reading Original Reference File is Done!\n" );
 	fflush( stdout );
 }
 
-void refShrinker( void ) {
-	for ( uint32_t i = 0; i < refSizeRdc; i ++ ) {
-		if ( referenceOrg.size() == 0 ) {
-			break;
-		} else {
-			if ( i % 1000000 == 0 ) {
-				printf( "Reduced Reference: %u\n", i );
-				fflush( stdout );
-			}
-
-			// Get the first element of original reference [MAP]
-			// Store the element to the reduced reference [VECTOR]
-			auto begin = referenceOrg.begin();
-			for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
-				referenceRdc.push_back(begin->second[j]);
-			}
-	
-			// Verification purpose
-			if ( i == 0 ) {
-				for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
-					verification_x[j] = begin->second[j];
-				}
-			}
-
-			// Get the index of elements that has the same 32-bit LSB portion via MULTIMAP
-			// Delete the elements at MAP
-			// Delete the elements at MULTIMAP
-			uint64_t encKmerTmp1 = begin->second[0] << 32;
-			uint64_t encKmerTmp2 = encKmerTmp1 >> 32;
-			uint32_t encKmer32Bits = (uint32_t)encKmerTmp2;
-			for ( auto iter = reference32b.lower_bound(encKmer32Bits); 
-				   iter != reference32b.upper_bound(encKmer32Bits); 
-				   iter ++ ) {
-				referenceOrg.erase(iter->second);
-			}
-			reference32b.erase(encKmer32Bits);
-
-			refInstCnt ++;
-		}
-	}
-
-	printf( "Shrinking Reference File is Done!\n" );
-	printf( "Reduced Reference: %u\n", refInstCnt );
-	fflush( stdout );
-}
 
 void refWriter( char *filename ) {
 	ofstream f_reference_reduced(filename, ios::binary);
-	for ( uint32_t i = 0; i < refInstCnt;  i ++ ) {
+	for ( uint32_t i = 0; i < refSizeInst;  i ++ ) {
 		for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
-			f_reference_reduced.write(reinterpret_cast<char *>(&referenceRdc[i*ENCKMERBUFSIZE + j]), BINARYRWUNIT);
+			f_reference_reduced.write(reinterpret_cast<char *>(&referenceRdcY[i*ENCKMERBUFSIZE + j]), BINARYRWUNIT);
 		}
 	}
 
@@ -129,13 +97,10 @@ void refWriter( char *filename ) {
 
 int main( void ) {
 	char *filenameOriginal = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
-	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256MersReduced.bin";
-
-	// Read Original Reference File
-	refReader( filenameOriginal );
+	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers_1024M_32LSB.bin";
 
 	// Shrink Original Reference File
-	refShrinker();
+	refShrinker( filenameOriginal );
 
 	// Write the Reduced Reference File
 	refWriter( filenameReduced );
