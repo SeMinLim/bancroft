@@ -28,6 +28,9 @@ uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
 uint64_t refSizeOrg = 2836860451;
 uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 536870912;
+//uint64_t refSizeUsd = 1073741824;
+//uint64_t refSizeUsd = 2147483648;
 
 
 // Time Checker
@@ -53,18 +56,23 @@ void seqReader( char *filename ) {
 }
 void refReader( char *filename ) {
 	ifstream f_data_reference(filename, ios::binary);
-	for ( uint32_t i = 0; i < refSizeUsd; i ++ ) {
+	for ( uint64_t i = 0; i < refSizeUsd; i ++ ) {
 		uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
 		// Read
-		for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
+		for ( uint64_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
 		// Insert 256-Mers to Map
-		reference[make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], make_pair(encKmer[3], 
-			  make_pair(encKmer[4], make_pair(encKmer[5], make_pair(encKmer[6], encKmer[7])))))))] = i;
-		
+		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
+				      make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
+				      make_pair(encKmer[6], encKmer[7]))))))), i)).second == false ) {
+			printf( "There's a problme on reference code book...\n" );
+			fflush( stdout );
+			exit(1);
+		}
+		// Check the progress
 		if ( i % 1000000 == 0 ) {
-			printf( "Reference: %u\n", i );
+			printf( "Reference: %lu\n", i );
 			fflush( stdout );
 		}
 	}
@@ -104,7 +112,7 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 
 // Compressor
 void compressor( void ) {
-	for ( uint32_t seqIdx = 0; seqIdx < sequences.size() - 1; seqIdx ++ ) {
+	for ( uint64_t seqIdx = 0; seqIdx < sequences.size() - 1; seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
@@ -121,7 +129,7 @@ void compressor( void ) {
 				start += KMERLENGTH;
 			} else start += STRIDE;
 		}
-		printf( "Compressing #%d Sequences is Done!\n", seqIdx );
+		printf( "Compressing #%lu Sequences is Done!\n", seqIdx );
 		fflush( stdout );
 	}
 }
@@ -129,7 +137,7 @@ void compressor( void ) {
 
 int main( void ) {
 	char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	char *filenameR = "/mnt/ephemeral/hg19hg38RefBook256Mers_256M_RSHash.bin";
+	char *filenameR = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
@@ -145,15 +153,15 @@ int main( void ) {
 
 	printf( "--------------------------------------------\n" );
 	printf( "REFERENCE\n" );
-	printf( "Reference Book [#KMER]: %ld\n", refSizeUsd );
+	printf( "Reference Book [#KMER]: %lu\n", refSizeUsd );
 	printf( "Reference Book [Size]: %0.4f GB\n", ((double)refSizeUsd * KMERLENGTH) / 1024 / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "SEQUENCE\n" );
-	printf( "Number of Base Pairs [Original]: %ld\n", seqSizeOrg );
+	printf( "Number of Base Pairs [Original]: %lu\n", seqSizeOrg );
 	printf( "Original File Size: %0.4f MB\n", (double)seqSizeOrg / 1024 / 1024 );
 	printf( "--------------------------------------------\n" );
 	printf( "COMPRESSION RESULT\n" );
-	printf( "Number of Base Pairs [Compressed]: %ld\n", seqSizeCmp * KMERLENGTH );
+	printf( "Number of Base Pairs [Compressed]: %lu\n", seqSizeCmp * KMERLENGTH );
 	printf( "Compressed File Size [Original]: %0.4f MB\n", 
 		(double)(((seqSizeOrg - (seqSizeCmp * KMERLENGTH)) * 8) + (seqSizeCmp * REFINDEX)) / 8 / 1024 / 1024 );
 	printf( "Compressed File Size [2-b Encd]: %0.4f MB\n", 
