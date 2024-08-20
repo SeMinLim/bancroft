@@ -23,14 +23,13 @@ using namespace std;
 vector<uint64_t> referenceRdc;
 
 
-uint32_t refSizeOrg = 2836860451;
-uint32_t refSizeRdc = 268435456;
-uint32_t refSizeRead = 0;
-uint32_t refSizeInst = 0;
-
-
-uint64_t verification_x[ENCKMERBUFSIZE] = {0, };
-uint64_t verification_y[ENCKMERBUFSIZE] = {0, };
+uint64_t refSizeRead = 0;
+uint64_t refSizeInst = 0;
+uint64_t refSizeOrg = 2836860451;
+uint64_t refSizeRdc = 268435456;
+//uint64_t refSizeRdc = 536870912;
+//uint64_t refSizeRdc = 1073741824;
+//uint64_t refSizeRdc = 2147483648;
 
 
 void refShrinker( char *filename ) {
@@ -39,31 +38,26 @@ void refShrinker( char *filename ) {
 		uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
 
 		// Read
-		for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
-			f_reference_original.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
+		for ( uint64_t cnt = 0; cnt < ENCKMERBUFSIZE; cnt ++ ) {
+			f_reference_original.read(reinterpret_cast<char *>(&encKmer[cnt]), BINARYRWUNIT);
 		}
 		refSizeRead ++;
 
-		// Verification purpose
-		if ( refSizeInst == 0 ) {
-			for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
-				verification_x[j] = encKmer[j];
-			}
-		}
-
 		// Insert 256-mers to the vector
-		for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
-			referenceRdc.push_back(encKmer[j]);
+		for ( uint64_t cnt = 0; cnt < ENCKMERBUFSIZE; cnt ++ ) {
+			referenceRdc.push_back(encKmer[cnt]);
 		}
 		refSizeInst ++;
 
+		// Check the progress
 		if ( refSizeRead % 1000000 == 0 ) {
-			printf( "Read: %u, Reduced Reference: %u\n", refSizeRead, refSizeInst );
+			printf( "Read: %lu, Reduced Reference: %lu\n", refSizeRead, refSizeInst );
 			fflush( stdout );
 		}
 	}
 
 	f_reference_original.close();
+	printf( "Reduced Reference: %lu\n", refSizeInst );
 	printf( "Making Reduced Reference Book is Done!\n" );
 	fflush( stdout );
 }
@@ -71,9 +65,9 @@ void refShrinker( char *filename ) {
 void refWriter( char *filename ) {
 	// Write the result
 	ofstream f_reference_reduced(filename, ios::binary);
-	for ( uint32_t i = 0; i < refSizeInst;  i ++ ) {
-		for ( uint32_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
-			f_reference_reduced.write(reinterpret_cast<char *>(&referenceRdcY[i*ENCKMERBUFSIZE + j]), BINARYRWUNIT);
+	for ( uint64_t i = 0; i < refSizeInst;  i ++ ) {
+		for ( uint64_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
+			f_reference_reduced.write(reinterpret_cast<char *>(&referenceRdc[i*ENCKMERBUFSIZE + j]), BINARYRWUNIT);
 		}
 	}
 
@@ -86,27 +80,13 @@ void refWriter( char *filename ) {
 
 int main( void ) {
 	char *filenameOriginal = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
-	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers_256M_32LSB.bin";
+	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers_256M_Vanila.bin";
 
 	// Shrink Original Reference File
 	refShrinker( filenameOriginal );
 
 	// Write the Reduced Reference File
 	refWriter( filenameReduced );
-
-	// Verification
-	ifstream f_verification(filenameReduced, ios::binary);
-	for ( uint32_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
-		f_verification.read(reinterpret_cast<char *>(&verification_y[i]), BINARYRWUNIT);
-	}
-
-	uint32_t cnt = 0;
-	for ( uint32_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
-		if ( verification_x[i] != verification_y[i] ) cnt ++;
-	}
-	if ( cnt == 0 ) printf( "Writing the Reduced Reference File is succeeded\n" );
-	else printf( "Writing the Reduced Reference File is Failure\n" );
-	fflush( stdout );
 
 	return 0;
 }
