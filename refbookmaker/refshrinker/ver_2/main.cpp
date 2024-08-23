@@ -58,7 +58,8 @@ void refShrinker( char *filename ) {
 
 			refSizeInst ++;
 		}
-
+		
+		// Check the progress
 		if ( refSizeRead % 1000000 == 0 ) {
 			printf( "read: %lu, Reduced Reference: %lu\n", refSizeRead, refSizeInst );
 			fflush( stdout );
