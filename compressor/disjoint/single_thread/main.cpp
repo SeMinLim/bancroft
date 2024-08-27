@@ -27,10 +27,13 @@ map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, p
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmp = 0;
 uint64_t refSizeOrg = 2836860451;
-uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2147483648;
+//uint64_t refSizeUsd = 2836860451;
+//uint64_t refSizeUsd = 2076244715;
+uint64_t refSizeUsd = 1963010781;
 
 
 // Time Checker
@@ -137,7 +140,7 @@ void compressor( void ) {
 
 int main( void ) {
 	char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	char *filenameR = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
+	char *filenameR = "/mnt/ephemeral/hg19hg38RefBook256Mers_2048M_JSHash.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
