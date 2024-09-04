@@ -13,7 +13,7 @@ using namespace std;
 
 
 #define KMERLENGTH 256
-#define STRIDE 256
+#define STRIDE 128
 #define REFINDEX 32
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 8
@@ -32,6 +32,7 @@ uint64_t refSizeOrg = 2836860451;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2147483648;
 //uint64_t refSizeUsd = 2836860451;
+//uint64_t refSizeUsd = 1128110488;
 //uint64_t refSizeUsd = 2076244715;
 uint64_t refSizeUsd = 1963010781;
 
@@ -69,7 +70,7 @@ void refReader( char *filename ) {
 		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
 				      make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
 				      make_pair(encKmer[6], encKmer[7]))))))), i)).second == false ) {
-			printf( "There's a problme on reference code book...\n" );
+			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);
 		}
