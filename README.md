@@ -54,4 +54,13 @@
       ```
       sort -k 2 -n -r 32mers.txt > hg38refbook.txt
       ```
+## 256-Mers
+  1. first
+     ```
+     kmc -k256 -m64 -fa -ci3 -cs1000000000 -b @files.lst 256mers kmc_tmp
+     ```
+  3. second
+     ```
+     kmc -k256 -m64 -fa -cs1000000000 -cx2 -b @files.lst 256mers kmc_tmp
+     ```
 ## Compression
