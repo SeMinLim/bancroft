@@ -18,7 +18,7 @@
      ```
   5. Run KMC
      ```
-     kmc -k32 -fa hg19.fasta 32mers kmc_tmp
+     kmc -k32 -m64 -fa -cs1000000000 -b hg19.fasta 32mers kmc_tmp
      ```
      ```
      kmc_tools transform 32mers dump 32mers.txt
@@ -45,7 +45,7 @@
      ```
   5. Run KMC
      ```
-     kmc -k32 -fa hg38.fasta 32mers kmc_tmp
+     kmc -k32 -m64 -fa -cs1000000000 -b hg38.fasta 32mers kmc_tmp
      ```
      ```
      kmc_tools transform 32mers dump 32mers.txt
