@@ -82,6 +82,6 @@
      ```
   4. 2-Bit Encoding
      ```
-     ./2_RefBookMaker/2BitEncoding/hg19hg38/obj/main
+     ./refbookmaker/2bitencoding/hg19hg38/obj/main
      ```   
 ## Compression
