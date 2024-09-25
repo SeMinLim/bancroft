@@ -189,8 +189,12 @@ int main( void ) {
 	printf( "The Length of K-Mer: %lu\n", KMERLENGTH );
 	printf( "The Number of K-Mer: %lu\n", refSizeUsd );
 	printf( "--------------------------------------------\n" );
-	printf( "COMPRESSION RESULT\n" );
+	printf( "SEQUENCE\n" );
+	printf( "The Number of Base Pair : %lu\n", seqSizeOrg );
 	printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024 / 1024 / 4 );
+	printf( "--------------------------------------------\n" );
+	printf( "COMPRESSION RESULT\n" );
+	printf( "The Number of Base Pair : %lu", seqSizeCmpP * KMERLENGTH );
 	printf( "The Compressed File Size: %0.4f MB\n", 
 	     	(double)((seqSizeCmpN * REFCOMPINDEX_N) + (seqSizeCmpP * REFCOMPINDEX_P)) / 8 / 1024 / 1024 );
 	printf( "Elapsed Time: %lf\n", elapsedTime );
