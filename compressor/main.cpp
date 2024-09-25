@@ -15,28 +15,28 @@ using namespace std;
 #define KMERLENGTH 256
 // Stride == 128
 #define STRIDE 128
-#define REFCOMPINDEX_N 129
+#define REFCOMPINDEX_N 257 // (1 + (128 * 2))
 // Stride == 64
 //#define STRIDE 64
-//#define REFCOMPINDEX_N 65
+//#define REFCOMPINDEX_N 129 // (1 + (64 * 2))
 // Stride == 32
 //#define STRIDE 32
-//#define REFCOMPINDEX_N 33
+//#define REFCOMPINDEX_N 65 // (1 + (32 * 2))
 // Stride == 16
 //#define STRIDE 16
-//#define REFCOMPINDEX_N 17
+//#define REFCOMPINDEX_N 33 // (1 + (16 * 2))
 // Stride == 8
 //#define STRIDE 8
-//#define REFCOMPINDEX_N 9
+//#define REFCOMPINDEX_N 17 // (1 + (8 * 2))
 // Stride == 4
 //#define STRIDE 4
-//#define REFCOMPINDEX_N 5
+//#define REFCOMPINDEX_N 9 // (1 + (4 * 2))
 // Stride == 2
 //#define STRIDE 2
-//#define REFCOMPINDEX_N 3
+//#define REFCOMPINDEX_N 5 // (1 + (2 * 2))
 // Stride == 1
 //#define STRIDE 1
-//#define REFCOMPINDEX_N 2
+//#define REFCOMPINDEX_N 3 // (1 + (1 * 2))
 #define REFCOMPINDEX_P 33
 
 #define ENCKMERBUFUNIT 32
