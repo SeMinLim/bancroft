@@ -51,16 +51,17 @@ map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, p
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmpN = 0;
 uint64_t seqSizeCmpP = 0;
+uint64_t seqSizeRmnd = 0;
 
 uint64_t refSizeOrg = 2836860451;
-//uint64_t refSizeUsd = 268435456;
+uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2147483648;
 //uint64_t refSizeUsd = 2836860451;
 //uint64_t refSizeUsd = 1128110488;
 //uint64_t refSizeUsd = 2076244715;
-uint64_t refSizeUsd = 1963010781;
+//uint64_t refSizeUsd = 1963010781;
 
 
 // Time Checker
@@ -162,6 +163,10 @@ void compressor( void ) {
 				start += STRIDE;
 			}
 		}
+		// Handle remainder
+		uint64_t remainder = sequences[seqIdx].size() - start;
+		if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
+
 		printf( "Compressing #%lu Sequences is Done!\n", seqIdx );
 		fflush( stdout );
 	}
@@ -184,6 +189,7 @@ int main( void ) {
 	double processFinish = timeChecker();
 	double elapsedTime = processFinish - processStart;
 
+	// Results
 	printf( "--------------------------------------------\n" );
 	printf( "REFERENCE\n" );
 	printf( "The Length of K-Mer: %lu\n", KMERLENGTH );
@@ -194,9 +200,9 @@ int main( void ) {
 	printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024 / 1024 / 4 );
 	printf( "--------------------------------------------\n" );
 	printf( "COMPRESSION RESULT\n" );
-	printf( "The Number of Base Pair : %lu", seqSizeCmpP * KMERLENGTH );
+	printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
 	printf( "The Compressed File Size: %0.4f MB\n", 
-	     	(double)((seqSizeCmpN * REFCOMPINDEX_N) + (seqSizeCmpP * REFCOMPINDEX_P)) / 8 / 1024 / 1024 );
+	     	(double)((seqSizeCmpN * REFCOMPINDEX_N) + (seqSizeCmpP * REFCOMPINDEX_P) + seqSizeRmnd) / 8 / 1024 / 1024 );
 	printf( "Elapsed Time: %lf\n", elapsedTime );
 
 	return 0;
