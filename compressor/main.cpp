@@ -175,7 +175,7 @@ void compressor( void ) {
 
 int main( void ) {
 	char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	char *filenameR = "/mnt/ephemeral/hg19hg38RefBook256Mers_2048M_JSHash.bin";
+	char *filenameR = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
