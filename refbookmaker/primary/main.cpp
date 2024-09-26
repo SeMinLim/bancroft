@@ -59,8 +59,8 @@ void fastaMaker( char *filename ) {
 
 
 int main() {
-	char *filenameIn = "/home/semin/hg16_tmp.fasta";
-	char *filenameOut = "/home/semin/hg16.fasta";
+	char *filenameIn = "/home/semin/dna_compressor/data/references/grch37.fasta";
+	char *filenameOut = "/home/semin/dna_compressor/data/references/hg19.fasta";
 
 	printf( "Sequence organizing is started!\n" );
 	fflush( stdout );
