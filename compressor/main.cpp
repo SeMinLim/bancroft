@@ -13,32 +13,6 @@ using namespace std;
 
 
 #define KMERLENGTH 256
-// Stride == 128
-#define STRIDE 128
-#define REFCOMPINDEX_N 257 // (1 + (128 * 2))
-// Stride == 64
-//#define STRIDE 64
-//#define REFCOMPINDEX_N 129 // (1 + (64 * 2))
-// Stride == 32
-//#define STRIDE 32
-//#define REFCOMPINDEX_N 65 // (1 + (32 * 2))
-// Stride == 16
-//#define STRIDE 16
-//#define REFCOMPINDEX_N 33 // (1 + (16 * 2))
-// Stride == 8
-//#define STRIDE 8
-//#define REFCOMPINDEX_N 17 // (1 + (8 * 2))
-// Stride == 4
-//#define STRIDE 4
-//#define REFCOMPINDEX_N 9 // (1 + (4 * 2))
-// Stride == 2
-//#define STRIDE 2
-//#define REFCOMPINDEX_N 5 // (1 + (2 * 2))
-// Stride == 1
-//#define STRIDE 1
-//#define REFCOMPINDEX_N 3 // (1 + (1 * 2))
-#define REFCOMPINDEX_P 33
-
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 8
 #define BINARYRWUNIT 8
@@ -142,7 +116,7 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 }
 
 // Compressor
-void compressor( void ) {
+void compressor( const uint64_t stride ) {
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size() - 1; seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
@@ -160,7 +134,7 @@ void compressor( void ) {
 				start += KMERLENGTH;
 			} else {
 				seqSizeCmpN ++;
-				start += STRIDE;
+				start += stride;
 			}
 		}
 		// Handle remainder
@@ -173,7 +147,7 @@ void compressor( void ) {
 }
 
 
-int main( void ) {
+int main( int argc, char **argv ) {
 	char *filenameS = "/mnt/ephemeral/hg16.fasta";
 	char *filenameR = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
 
@@ -184,26 +158,36 @@ int main( void ) {
 	refReader( filenameR );
 
 	// Compression
-	double processStart = timeChecker();
-	compressor();
-	double processFinish = timeChecker();
-	double elapsedTime = processFinish - processStart;
+	for ( uint64_t stride = 1; stride < 512; stride = stride * 2 ) {
+		uint64_t refCompIndexN = 1 + stride * 2;
+		uint64_t refCompIndexP = 1 + 28;
 
-	// Results
-	printf( "--------------------------------------------\n" );
-	printf( "REFERENCE\n" );
-	printf( "The Length of K-Mer: %lu\n", KMERLENGTH );
-	printf( "The Number of K-Mer: %lu\n", refSizeUsd );
-	printf( "--------------------------------------------\n" );
-	printf( "SEQUENCE\n" );
-	printf( "The Number of Base Pair : %lu\n", seqSizeOrg );
-	printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024 / 1024 / 4 );
-	printf( "--------------------------------------------\n" );
-	printf( "COMPRESSION RESULT\n" );
-	printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
-	printf( "The Compressed File Size: %0.4f MB\n", 
-	     	(double)((seqSizeCmpN * REFCOMPINDEX_N) + (seqSizeCmpP * REFCOMPINDEX_P) + seqSizeRmnd) / 8 / 1024 / 1024 );
-	printf( "Elapsed Time: %lf\n", elapsedTime );
+		seqSizeCmpN = 0;
+		seqSizeCmpP = 0;
+		seqSizeRmnd = 0;
+
+		double processStart = timeChecker();
+		compressor( stride );
+		double processFinish = timeChecker();
+		double elapsedTime = processFinish - processStart;
+
+		// Results
+		printf( "--------------------------------------------\n" );
+		printf( "REFERENCE\n" );
+		printf( "The Length of K-Mer: %lu\n", KMERLENGTH );
+		printf( "The Number of K-Mer: %lu\n", refSizeUsd );
+		printf( "--------------------------------------------\n" );
+		printf( "SEQUENCE\n" );
+		printf( "The Number of Base Pair : %lu\n", seqSizeOrg );
+		printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024 / 1024 / 4 );
+		printf( "--------------------------------------------\n" );
+		printf( "COMPRESSION RESULT\n" );
+		printf( "Stride                  : %lu\n", stride );
+		printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
+		printf( "The Compressed File Size: %0.4f MB\n", 
+		     	(double)((seqSizeCmpN * refCompIndexN) + (seqSizeCmpP * refCompIndexP) + seqSizeRmnd) / 8 / 1024 / 1024 );
+		printf( "Elapsed Time: %lf\n", elapsedTime );
+	}
 
 	return 0;
 }
