@@ -56,9 +56,9 @@ int main( void ) {
 	string seqLine;
 	uint64_t cnt = 0;
 	
-	char *filenameI_1 = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers_1.txt";
-	char *filenameI_2 = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers_2.txt";
-	char *filenameO = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers.bin";
+	char *filenameI_1 = "/mnt/smartssd0/semin/hg19RefBook256Mers_1.txt";
+	char *filenameI_2 = "/mnt/smartssd0/semin/hg19RefBook256Mers_2.txt";
+	char *filenameO = "/mnt/smartssd0/semin/hg19RefBook256Mers.bin";
 	
 	string verificationX;
 	string verificationY;
