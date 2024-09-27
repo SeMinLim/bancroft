@@ -17,7 +17,6 @@ using namespace std;
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 8
 #define BINARYRWUNIT 8
-#define RDCREFSIZE 268435456
 
 
 unordered_map<uint32_t, uint8_t> referenceRdcX;
@@ -29,8 +28,8 @@ uint64_t refSizeInst = 0;
 uint64_t refSizeOrg = 2836860451;
 //uint64_t refSizeRdc = 268435456;
 //uint64_t refSizeRdc = 536870912;
-uint64_t refSizeRdc = 1073741824;
-//uint64_t refSizeRdc = 2147483648;
+//uint64_t refSizeRdc = 1073741824;
+uint64_t refSizeRdc = 2147483648;
 
 
 void refShrinker( char *filename ) {
@@ -90,7 +89,7 @@ void refWriter( char *filename ) {
 
 int main( void ) {
 	char *filenameOriginal = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
-	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers_1024M_32LSB.bin";
+	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers1076M32LSB.bin";
 
 	// Shrink Original Reference File
 	refShrinker( filenameOriginal );
