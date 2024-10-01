@@ -60,25 +60,18 @@
       ```
 ### Make a 256-Mers Reference Book
 #### HG19
-  1. Run KMC (To get the 256-Mers that occurred 3 times or more)
+  1. Run KMC
      ```
-     kmc -k256 -m64 -fa -ci3 -cs1000000000 -b hg19.fasta 256mers_1 kmc_tmp
+     kmc -k256 -m64 -fa -cs1000000000 -b hg19.fasta 256mers kmc_tmp
      ```
      ```
-     kmc_tools transform 256mers_1 dump 256mers_1.txt
+     kmc_tools transform 256mers dump 256mers.txt
      ```
   2. Sort the file in decending order
      ```
-     sort -k 2 -n -r 256mers_1.txt > hg19RefBook256Mers_1.txt
+     sort -k 2 -n -r 256mers.txt > hg19RefBook256Mers.txt
      ```
-  3. Run KMC (To get the 256-Mers that occurred 2 times) 
-     ```
-     kmc -k256 -m64 -fa -cs1000000000 -cx2 -b hg19.fasta 256mers_2 kmc_tmp
-     ```
-     ```
-     kmc_tools transform 256mers_2 dump hg19RefBook256Mers_2.txt
-     ```
-  4. 2-Bit Encoding
+  3. 2-Bit Encoding
      ```
      ./refbookmaker/2bitencoding/hg19/obj/main
      ```   
