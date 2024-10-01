@@ -74,6 +74,22 @@
   3. 2-Bit Encoding
      ```
      ./refbookmaker/2bitencoding/hg19/obj/main
+     ```
+#### HG38
+  1. Run KMC
+     ```
+     kmc -k256 -m64 -fa -cs1000000000 -b hg38.fasta 256mers kmc_tmp
+     ```
+     ```
+     kmc_tools transform 256mers dump 256mers.txt
+     ```
+  2. Sort the file in decending order
+     ```
+     sort -k 2 -n -r 256mers.txt > hg38RefBook256Mers.txt
+     ```
+  3. 2-Bit Encoding
+     ```
+     ./refbookmaker/2bitencoding/hg38/obj/main
      ```   
 #### HG19 + HG38
   1. Run KMC (To get the 256-Mers that occurred 3 times or more)
