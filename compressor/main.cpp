@@ -27,12 +27,16 @@ uint64_t seqSizeCmpN = 0;
 uint64_t seqSizeCmpP = 0;
 uint64_t seqSizeRmnd = 0;
 
+// Reference: hg19
+//uint64_t refSizeOrg = 10976427;
+//uint64_t refSizeUsd = 10976427;
+// Reference: hg19+hg38
 uint64_t refSizeOrg = 2836860451;
-uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2147483648;
-//uint64_t refSizeUsd = 2836860451;
+uint64_t refSizeUsd = 2836860451;
 //uint64_t refSizeUsd = 1128110488;
 //uint64_t refSizeUsd = 2076244715;
 //uint64_t refSizeUsd = 1963010781;
@@ -160,7 +164,7 @@ int main( int argc, char **argv ) {
 	// Compression
 	for ( uint64_t stride = 1; stride < 512; stride = stride * 2 ) {
 		uint64_t refCompIndexN = 1 + stride * 2;
-		uint64_t refCompIndexP = 1 + 28;
+		uint64_t refCompIndexP = 1 + 32;
 
 		seqSizeCmpN = 0;
 		seqSizeCmpP = 0;
