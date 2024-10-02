@@ -56,8 +56,7 @@ int main( void ) {
 	string seqLine;
 	uint64_t cnt = 0;
 	
-	char *filenameI_1 = "/mnt/smartssd0/semin/hg19RefBook256Mers_1.txt";
-	char *filenameI_2 = "/mnt/smartssd0/semin/hg19RefBook256Mers_2.txt";
+	char *filenameI = "/mnt/smartssd0/semin/hg19RefBook256Mers.txt";
 	char *filenameO = "/mnt/smartssd0/semin/hg19RefBook256Mers.bin";
 	
 	string verificationX;
@@ -66,8 +65,8 @@ int main( void ) {
 	ofstream f_output(filenameO, ios::binary);
 
 	// 1st Reference Book File
-	ifstream f_input_1(filenameI_1);
-	while ( getline(f_input_1, seqLine) ) {
+	ifstream f_input(filenameI);
+	while ( getline(f_input, seqLine) ) {
 		if ( cnt == 0 ) verificationX = seqLine.substr(0, 256);
 		uint64_t encKmer[ENCKMERBUFSIZE];
 		encoder(seqLine, encKmer);
@@ -76,23 +75,9 @@ int main( void ) {
 		}
 		cnt ++;
 	}
-	f_input_1.close();
-	printf( "Writing the 1st Reference Book File as Binary is Done\n" );
-	fflush( stdout );
-
-	// 2nd Reference Book File
-	ifstream f_input_2(filenameI_2);
-	while ( getline(f_input_2, seqLine) ) {
-		uint64_t encKmer[ENCKMERBUFSIZE];
-		encoder(seqLine, encKmer);
-		for ( size_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
-			f_output.write(reinterpret_cast<char *>(&encKmer[i]), BINARYRWUNIT);
-		}
-		cnt ++;
-	}
-	f_input_2.close();
+	f_input.close();
 	f_output.close();
-	printf( "Writing the 2nd Reference Book File as Binary is Done\n" );
+	printf( "Writing the Reference Book File as Binary is Done\n" );
 	fflush( stdout );
 
 	// Verification
