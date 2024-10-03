@@ -48,7 +48,7 @@ void hg38Reader( char *filename ) {
 }
 void hg19Reader( char *filename ) {
 	ifstream f_data_hg19(filename, ios::binary);
-	for ( uint64_t i = 0; i < hg19SizeOrg; i ++ ) {
+	for ( uint64_t i = 0; i < numHG19; i ++ ) {
 		uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
 		// Read
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
