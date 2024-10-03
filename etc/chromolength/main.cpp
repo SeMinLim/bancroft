@@ -12,9 +12,10 @@
 using namespace std;
 
 
-vector<string> annotation;
-vector<string> chromosomes;
 vector<uint64_t> length;
+
+
+uint64_t totalLength = 0;
 
 
 void fastaReader( char *filename ) {
@@ -28,46 +29,26 @@ void fastaReader( char *filename ) {
 
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
-			chromosomes.push_back(seqLine);
 			length.push_back(seqLine.size());
+			printf( "Length: %lu\n", seqLine.size() );
+			totalLength += seqLine.size();
 		} else {
-			annotation.push_back(seqLine);
+			printf( "%s\n", seqLine.c_str() );
 		}
 	}
 
 	f_data_sequences.close();
-}
-
-void fastaWriter( char *filename ) {
-	ofstream f_data_result(filename);
-	if ( !f_data_result.is_open() ) {
-		printf( "File not found: %s\n", filename );
-		exit(1);
-	}
-
-	for ( size_t i = 0; i < length.size(); i ++ ) {
-		f_data_result << annotation[i] << " : " << length[i] << "\n";
-		f_data_result << chromosomes[i] << "\n";
-	}
-	f_data_result << endl;
-
-	f_data_result.close();
+	
+	printf( "----------------------------------------------------------------------------\n" );
+	printf( "Total Length: %lu\n", totalLength );
 }
 
 
 int main( void ) {
-	char *filenameI = "/home/semin/hg16_tmp.fasta";
-	char *filenameO = "/home/semin/hg16.fasta";
-
+	char *filenameI = "/home/semin/dna_compressor/data/references/hg19/hg19.fasta";
+	
 	// Read assembled sequence file 
 	fastaReader( filenameI );
-	printf( "Read Done!\n" );
-	fflush( stdout );
-
-	// Attach the each chromosome's length to each annotation
-	fastaWriter( filenameO );
-	printf( "Write Done!\n" );
-	fflush( stdout );
 
 	return 0;
 }
