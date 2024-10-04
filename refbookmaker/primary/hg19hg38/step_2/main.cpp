@@ -20,8 +20,7 @@ using namespace std;
 
 
 vector<string> hg38;
-map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t> hg19;
-unordered_map<string, uint64_t> hg19hg38;
+map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint64_t> hg19;
 
 
 uint64_t numHG19 = 2838231473;
@@ -29,7 +28,12 @@ uint64_t numHG19HG38 = 0;
 
 
 // Function for Sorting
-bool decendingOrder( pair<string, uint64_t>& x, pair<string, uint64_t>& y ) {
+bool decendingOrder( pair<
+		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
+		     pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint64_t>& x, 
+		     pair<
+		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
+		     pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint64_t>& y ) {
 	return x.second > y.second;
 }
 
@@ -57,7 +61,7 @@ void hg19Reader( char *filename ) {
 		// Insert 256-Mers to Map
 		if ( hg19.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
 				 make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
-				 make_pair(encKmer[6], encKmer[7]))))))), i)).second == false ) {
+				 make_pair(encKmer[6], encKmer[7]))))))), 1)).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);
@@ -118,9 +122,9 @@ void refMaker( char *filename ) {
 			if ( hg19.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 				       make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 				       make_pair(encSubseq[6], encSubseq[7])))))))) != hg19.end() ) {
-				if ( hg19hg38.insert(make_pair(subseq, 2)).second == false ) {
-					hg19hg38.at(subseq) += 1;
-				}
+				hg19.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2],
+					make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5],
+					make_pair(encSubseq[6], encSubseq[7])))))))) += 1;
 			}
 			
 			start += 1;
@@ -132,19 +136,39 @@ void refMaker( char *filename ) {
 	printf( "Generating hg19hg38_2 is Done!\n" );
 	fflush( stdout );
 
+	// Delete the elements that has 1 occurrence
+	for ( auto iter = hg19.begin(); iter != hg19.end(); ) {
+		if ( iter->second == 1 ) hg19.erase(iter++);
+		else ++iter;
+	}
+
 	// Do sorting
-	vector<pair<string, uint64_t>> hg19hg38_vector(hg19hg38.begin(), hg19hg38.end());
-	sort(hg19hg38_vector.begin(), hg19hg38_vector.end(), decendingOrder);
-	numHG19HG38 = hg19hg38_vector.size();
+	vector<pair<
+	       pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
+	       pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
+	       uint64_t>> hg19_vector(hg19.begin(), hg19.end());
+	sort(hg19_vector.begin(), hg19_vector.end(), decendingOrder);
+	numHG19HG38 = hg19_vector.size();
 	printf( "Sorting hg19hg38_2 is Done!\n" );
 	fflush( stdout );
 
 	// Write the result
-	ofstream f_data_result(filename);
-	for ( uint64_t i = 0; i < hg19hg38_vector.size(); i ++ ) {
-		f_data_result << hg19hg38_vector[i].first << "\t" << hg19hg38_vector[i].second << "\n";
+	ofstream f_data_result(filename, ios::binary);
+	for ( uint64_t i = 0; i < hg19_vector.size(); i ++ ) {
+		uint64_t encKmer[ENCKMERBUFSIZE+1] = {0, };
+		encKmer[0] = hg19_vector[i].first.first;
+		encKmer[1] = hg19_vector[i].first.second.first;
+		encKmer[2] = hg19_vector[i].first.second.second.first;
+		encKmer[3] = hg19_vector[i].first.second.second.second.first;
+		encKmer[4] = hg19_vector[i].first.second.second.second.second.first;
+		encKmer[5] = hg19_vector[i].first.second.second.second.second.second.first;
+		encKmer[6] = hg19_vector[i].first.second.second.second.second.second.second.first;
+		encKmer[7] = hg19_vector[i].first.second.second.second.second.second.second.second;
+		encKmer[8] = hg19_vector[i].second;
+		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
+			f_data_result.write(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
+		}
 	}
-	f_data_result << endl;
 	f_data_result.close();
 	printf( "Writing hg19hg38_2 is Done\n" );
 	fflush( stdout );
@@ -154,7 +178,7 @@ void refMaker( char *filename ) {
 int main( int argc, char **argv ) {
 	char *filenamehg38 = "/mnt/ephemeral/hg38.fasta";
 	char *filenamehg19 = "/mnt/ephemeral/hg19RefBook256Mers_2.bin";
-	char *filenamehg19hg38 = "/mnt/ephemeral/hg19hg38Reference256Mers_2.txt";
+	char *filenamehg19hg38 = "/mnt/ephemeral/hg19hg38Reference256Mers_2.bin";
 
 	// Read hg38
 	hg38Reader( filenamehg38 );
