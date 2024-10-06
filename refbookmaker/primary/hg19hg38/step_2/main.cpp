@@ -109,7 +109,7 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 // HG19HG38 Maker
 void refMaker( char *filename ) {
 	// Generate the draft of hg19hg38_2
-	for ( uint64_t seqIdx = 0; seqIdx < hg38.size() - 1; seqIdx ++ ) {
+	for ( uint64_t seqIdx = 0; seqIdx < hg38.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= hg38[seqIdx].size() - KMERLENGTH ) {
 			string subseq = hg38[seqIdx].substr(start, KMERLENGTH);
@@ -195,6 +195,24 @@ int main( int argc, char **argv ) {
 	printf( "--------------------------------------------\n" );
 	printf( "The Number of K-Mer in HG19    : %lu\n", numHG19 );
 	printf( "The Number of K-Mer in HG19HG38: %lu\n", numHG19HG38 );
+
+	// Verification	
+	string decKmer;
+	decKmer.reserve(KMERLENGTH);
+	uint64_t encKmer[ENCKMERBUFSIZE+1] = {0, };
+	
+	ifstream f_data_hg19hg38(filenamehg19hg38, ios::binary);
+	for ( uint64_t i = 0; i < ENCKMERBUFSIZE + 1; i ++ ) {
+		f_data_hg19hg38.read(reinterpret_cast<char *>(&encKmer[i]), BINARYRWUNIT);
+	}
+	
+	decoder(encKmer, decKmer);
+
+	printf( "%s", decKmer.c_str() );
+	printf( "\t" );
+	printf( "%lu\n", encKmer[ENCKMERBUFSIZE] );
+	
+	f_data_hg19hg38.close();
 
 	return 0;
 }
