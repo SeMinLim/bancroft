@@ -31,13 +31,21 @@ uint64_t seqSizeRmnd = 0;
 //uint64_t refSizeOrg = 10976427;
 //uint64_t refSizeUsd = 10976427;
 // Reference: hg19+hg38
-uint64_t refSizeOrg = 2836860451;
+//uint64_t refSizeOrg = 2836860451;
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2147483648;
-uint64_t refSizeUsd = 2836860451;
+//uint64_t refSizeUsd = 2836860451;
+// Reference: hg19+hg38 [32LSB]
+//uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 536870912;
+//uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 1128110488;
+// Reference: hg19+hg38 [RS Hash]
+//uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 536870912;
+uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2076244715;
 //uint64_t refSizeUsd = 1963010781;
 
@@ -121,7 +129,7 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 
 // Compressor
 void compressor( const uint64_t stride ) {
-	for ( uint64_t seqIdx = 0; seqIdx < sequences.size() - 1; seqIdx ++ ) {
+	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
@@ -152,8 +160,8 @@ void compressor( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	char *filenameR = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
+	char *filenameS = "/home/semin/dna_compressor/data/hg16.fasta";
+	char *filenameR = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers1024MRSHash.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
