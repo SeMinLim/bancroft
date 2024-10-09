@@ -79,8 +79,8 @@ void refWriter( char *filename ) {
 
 
 int main( void ) {
-	char *filenameOriginal = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
-	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers_256M_Vanila.bin";
+	char *filenameOriginal = "hg19hg38Reference256Mers.bin";
+	char *filenameReduced = "hg19hg38Reference256Mers256MVanila.bin";
 
 	// Shrink Original Reference File
 	refShrinker( filenameOriginal );
