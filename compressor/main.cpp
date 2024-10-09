@@ -45,9 +45,20 @@ uint64_t seqSizeRmnd = 0;
 // Reference: hg19+hg38 [RS Hash]
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
-uint64_t refSizeUsd = 1073741824;
+//uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2076244715;
+// Reference: hg19+hg38 [JS Hash]
+//uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 536870912;
+//uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 1963010781;
+// Reference: hg19hg38
+//uint64_t refSizeOrg = 2825518939;
+//uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 536870912;
+//uint64_t refSizeUsd = 1073741824;
+//uint64_t refSizeUsd = 2147483648;
+//uint64_t refSizeUsd = 2825518939;
 
 
 // Time Checker
@@ -160,8 +171,8 @@ void compressor( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/home/semin/dna_compressor/data/hg16.fasta";
-	char *filenameR = "/mnt/smartssd0/semin/hg19hg38RefBook256Mers1024MRSHash.bin";
+	char *filenameS = "hg16.fasta";
+	char *filenameR = "hg19hg38Reference256Mers.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
