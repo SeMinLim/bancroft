@@ -25,7 +25,7 @@ vector<uint64_t> referenceRdcY;
 
 uint64_t refSizeRead = 0;
 uint64_t refSizeInst = 0;
-uint64_t refSizeOrg = 2836860451;
+uint64_t refSizeOrg = 2825518939;
 uint64_t refSizeRdc = 268435456;
 //uint64_t refSizeRdc = 536870912;
 //uint64_t refSizeRdc = 1073741824;
