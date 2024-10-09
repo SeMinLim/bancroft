@@ -27,10 +27,10 @@ vector<uint64_t> referenceRdcY;
 uint64_t refSizeRead = 0;
 uint64_t refSizeInst = 0;
 uint64_t refSizeOrg = 2836860451;
-//uint64_t refSizeRdc = 268435456;
+uint64_t refSizeRdc = 268435456;
 //uint64_t refSizeRdc = 536870912;
 //uint64_t refSizeRdc = 1073741824;
-uint64_t refSizeRdc = 2147483648;
+//uint64_t refSizeRdc = 2147483648;
 
 
 void decoder( const uint64_t *encKmer, string &seqLine ) {
@@ -117,8 +117,8 @@ void refWriter( char *filename ) {
 
 
 int main( void ) {
-	char *filenameOriginal = "/mnt/ephemeral/hg19hg38RefBook256Mers.bin";
-	char *filenameReduced = "/mnt/ephemeral/hg19hg38RefBook256Mers_2048M_RSHash.bin";
+	char *filenameOriginal = "hg19hg38Reference256Mers.bin";
+	char *filenameReduced = "hg19hg38Reference256Mers256MRSHash.bin";
 
 	// Shrink Original Reference File
 	refShrinker( filenameOriginal );
