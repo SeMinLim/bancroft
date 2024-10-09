@@ -142,8 +142,8 @@ void debruijn( void ) {
 
 
 int main() {
-	char *filenameR = "../../data/references/hg19RefBook12Mers.txt";
-	char *filenameD = "../../data/references/hg19RefBook12MersDeBruijn.txt";
+	char *filenameR = "hg19RefBook12Mers.txt";
+	char *filenameD = "hg19RefBook12MersDeBruijn.txt";
 
 	// Read reference file
 	refBookReader( filenameR );
