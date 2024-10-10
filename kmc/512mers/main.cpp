@@ -13,9 +13,9 @@
 using namespace std;
 
 
-#define KMERLENGTH 256
+#define KMERLENGTH 512
 #define ENCKMERBUFUNIT 32
-#define ENCKMERBUFSIZE 8
+#define ENCKMERBUFSIZE 16
 #define BINARYRWUNIT 8
 
 
@@ -24,7 +24,8 @@ uint64_t refSizeOrg = 0;
 
 
 vector<string> sequences;
-map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
+map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t,
+    pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>>>>>>>>>, 
     uint32_t> reference;
 
 
@@ -36,10 +37,14 @@ static inline double timeChecker( void ) {
 }
 bool decendingOrder( pair<
 		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
-		     pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t>& x, 
+		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t,
+		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
+		     pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>>>>>>>>>, uint32_t>& x, 
 		     pair<
 		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
-		     pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t>& y ) {
+		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t,
+		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t,
+		     pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>>>>>>>>>, uint32_t>& y ) {
 	return x.second > y.second;
 }
 
@@ -91,7 +96,7 @@ void fastaReader( char *filename ) {
 }
 
 void kmc( char *filename ) {
-	// Do 2-bit Encoding & Put all 256-mers to Map & Count the number of occurrence
+	// Do 2-bit Encoding & Put all 512-mers to Map & Count the number of occurrence
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
@@ -104,10 +109,16 @@ void kmc( char *filename ) {
 			// Put 256-mers and update the number of occurrence
 			if ( reference.insert(make_pair(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					      make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-					      make_pair(encSubseq[6], encSubseq[7]))))))), 1)).second == false ) {
+					      make_pair(encSubseq[6], make_pair(encSubseq[7], make_pair(encSubseq[8],
+					      make_pair(encSubseq[9], make_pair(encSubseq[10], make_pair(encSubseq[11], 
+					      make_pair(encSubseq[12], make_pair(encSubseq[13], 
+					      make_pair(encSubseq[14], encSubseq[15]))))))))))))))), 1)).second == false ) {
 				reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					     make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5],
-					     make_pair(encSubseq[6], encSubseq[7])))))))) += 1;
+					     make_pair(encSubseq[6], make_pair(encSubseq[7], make_pair(encSubseq[8],
+					     make_pair(encSubseq[9], make_pair(encSubseq[10], make_pair(encSubseq[11], 
+					     make_pair(encSubseq[12], make_pair(encSubseq[13], 
+					     make_pair(encSubseq[14], encSubseq[15])))))))))))))))) += 1;
 			} else refSizeOrg ++;
 			start += 1;
 		}
@@ -118,7 +129,9 @@ void kmc( char *filename ) {
 	// Do sorting
 	vector<pair<
 	       pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
-	       pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
+	       pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t,
+	       pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t,
+	       pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>>>>>>>>>, 
 	       uint32_t>> reference_vector(reference.begin(), reference.end());
 	sort(reference_vector.begin(), reference_vector.end(), decendingOrder);
 	printf( "[STEP 3] Sorting the k-mers through decending order is done!\n" );
@@ -135,7 +148,23 @@ void kmc( char *filename ) {
 		encKmer[4] = reference_vector[i].first.second.second.second.second.first;
 		encKmer[5] = reference_vector[i].first.second.second.second.second.second.first;
 		encKmer[6] = reference_vector[i].first.second.second.second.second.second.second.first;
-		encKmer[7] = reference_vector[i].first.second.second.second.second.second.second.second;
+		encKmer[7] = reference_vector[i].first.second.second.second.second.second.second.second.first;
+		encKmer[8] = reference_vector[i].first.second.second.second.second.second.second.second.second.
+			     first;
+		encKmer[9] = reference_vector[i].first.second.second.second.second.second.second.second.second.
+			     second.first;
+		encKmer[10] = reference_vector[i].first.second.second.second.second.second.second.second.second.
+			      second.second.first;
+		encKmer[11] = reference_vector[i].first.second.second.second.second.second.second.second.second.
+			      second.second.second.first;
+		encKmer[12] = reference_vector[i].first.second.second.second.second.second.second.second.second.
+			      second.second.second.second.first;
+		encKmer[13] = reference_vector[i].first.second.second.second.second.second.second.second.second.
+			      second.second.second.second.second.first;
+		encKmer[14] = reference_vector[i].first.second.second.second.second.second.second.second.second.
+			      second.second.second.second.second.second.first;
+		encKmer[15] = reference_vector[i].first.second.second.second.second.second.second.second.second.
+			      second.second.second.second.second.second.second;
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
 			f_data_result.write(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
@@ -167,7 +196,6 @@ int main() {
 	printf( "Reference Book [Size]: %0.4f GB\n", (double)((refSizeOrg * 512) + (refSizeOrg * 32)) / 8 / 1024 / 1024 / 1024 );
 	printf( "Elapsed Time: %lf\n", elapsedTimeKmc );
 	printf( "--------------------------------------------\n" );
-	
 	
 	return 0;
 }
