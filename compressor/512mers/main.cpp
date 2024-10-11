@@ -12,14 +12,16 @@
 using namespace std;
 
 
-#define KMERLENGTH 256
+#define KMERLENGTH 512
 #define ENCKMERBUFUNIT 32
-#define ENCKMERBUFSIZE 8
+#define ENCKMERBUFSIZE 16
 #define BINARYRWUNIT 8
 
 
 vector<string> sequences;
-map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t> reference;
+map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t,
+    pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>>>>>>>>>, 
+    uint32_t> reference;
 
 
 uint64_t seqSizeOrg = 0;
@@ -28,60 +30,11 @@ uint64_t seqSizeCmpP = 0;
 uint64_t seqSizeRmnd = 0;
 
 // Reference: hg19From2
-//uint64_t refSizeOrg = 10976427;
-//uint64_t refSizeUsd = 10976427;
+//uint64_t refSizeOrg = ;
+//uint64_t refSizeUsd = ;
 // Reference: hg19From1
-//uint64_t refSizeOrg = 2849207900;
-//uint64_t refSizeUsd = 2849207900;
-// Reference: hg19+hg38
-//uint64_t refSizeOrg = 2836860451;
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2147483648;
-//uint64_t refSizeUsd = 2836860451;
-// Reference: hg19+hg38 [32LSB]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1128110488;
-// Reference: hg19+hg38 [RS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2076244715;
-// Reference: hg19+hg38 [JS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1963010781;
-// Reference: hg19+hg38 [Cuckoo Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1963010781;
-// Reference: hg19hg38
-//uint64_t refSizeOrg = 2825518939;
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2147483648;
-//uint64_t refSizeUsd = 2825518939;
-// Reference: hg19hg38 [32LSB]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1127665898;
-// Reference: hg19hg38 [RS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2070382593;
-// Reference: hg19hg38 [JS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1957754995;
+//uint64_t refSizeOrg = 2856249498;
+uint64_t refSizeUsd = 2856249498;
 
 
 // Time Checker
@@ -113,10 +66,12 @@ void refReader( char *filename ) {
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
-		// Insert 256-Mers to Map
-		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
-				      make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
-				      make_pair(encKmer[6], encKmer[7]))))))), i)).second == false ) {
+		// Insert 512-Mers to Map
+		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], make_pair(encKmer[3], 
+				      make_pair(encKmer[4], make_pair(encKmer[5], make_pair(encKmer[6], make_pair(encKmer[7],
+				      make_pair(encKmer[8], make_pair(encKmer[9], make_pair(encKmer[10], make_pair(encKmer[11],
+				      make_pair(encKmer[12], make_pair(encKmer[13], make_pair(encKmer[14], encKmer[15]))))))))))))))), 
+				      i)).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);
@@ -173,9 +128,11 @@ void compressor( const uint64_t stride ) {
 			encoder(subseq, encSubseq);
 
 			// Check possible to compress
-			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-					    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
+			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], make_pair(encSubseq[3], 
+					    make_pair(encSubseq[4], make_pair(encSubseq[5], make_pair(encSubseq[6], make_pair(encSubseq[7],
+					    make_pair(encSubseq[8], make_pair(encSubseq[9], make_pair(encSubseq[10], make_pair(encSubseq[11],
+					    make_pair(encSubseq[12], make_pair(encSubseq[13], 
+					    make_pair(encSubseq[14], encSubseq[15])))))))))))))))) != reference.end() ) {
 				seqSizeCmpP ++;
 				start += KMERLENGTH;
 			} else {
@@ -194,8 +151,8 @@ void compressor( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "hg16.fasta";
-	char *filenameR = "hg19RefBook256MersFrom1.bin";
+	char *filenameS = "/mnt/ephemeral/hg16.fasta";
+	char *filenameR = "/home/jovyan/hg19RefBook512MersFrom1.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
@@ -204,7 +161,7 @@ int main( int argc, char **argv ) {
 	refReader( filenameR );
 
 	// Compression
-	for ( uint64_t stride = 1; stride < 512; stride = stride * 2 ) {
+	for ( uint64_t stride = 1; stride < 1024; stride = stride * 2 ) {
 		uint64_t refCompIndexN = 1 + stride * 2;
 		uint64_t refCompIndexP = 1 + 32;
 
