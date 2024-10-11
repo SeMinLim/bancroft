@@ -17,6 +17,7 @@ using namespace std;
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 16
 #define BINARYRWUNIT 8
+#define FROM1 0
 
 
 uint64_t seqSizeOrg = 0;
@@ -131,6 +132,16 @@ void kmc( char *filename ) {
 	}
 	printf( "[STEP 2] Generating 2-bit encoded k-mer table is done!\n" );
 	fflush( stdout );
+
+	// Erase the 512-mers that occurs only one time [Conditional Module!]
+	if ( FROM1 == 0 ) {
+		for ( auto iter = reference.begin(); iter != reference.end(); ) {
+			if ( iter->second == 1 ) reference.erase(iter++);
+			else ++iter;
+		}
+		printf( "[STEP 2] Erasing k-mers that occurs only 1 time is done!\n" );
+		fflush( stdout );
+	}
 	
 	// Do sorting
 	vector<pair<
@@ -199,7 +210,7 @@ int main() {
 	printf( "KMER [Total]: %ld\n", seqSizeOrg );
 	printf( "KMER [Count]: %ld\n", refSizeOrg );
 	printf( "KMER [Percentage]: %0.8f\n", (double)(refSizeOrg / seqSizeOrg) * 100 );
-	printf( "Reference Book [Size]: %0.4f GB\n", (double)((refSizeOrg * 512) + (refSizeOrg * 32)) / 8 / 1024 / 1024 / 1024 );
+	printf( "Reference Book [Size]: %0.4f GB\n", (double)((refSizeOrg * 1024) + (refSizeOrg * 32)) / 8 / 1024 / 1024 / 1024 );
 	printf( "Elapsed Time: %lf\n", elapsedTimeKmc );
 	printf( "--------------------------------------------\n" );
 	
