@@ -27,9 +27,12 @@ uint64_t seqSizeCmpN = 0;
 uint64_t seqSizeCmpP = 0;
 uint64_t seqSizeRmnd = 0;
 
-// Reference: hg19
+// Reference: hg19From2
 //uint64_t refSizeOrg = 10976427;
 //uint64_t refSizeUsd = 10976427;
+// Reference: hg19From1
+//uint64_t refSizeOrg = 2849207900;
+uint64_t refSizeUsd = 2849207900;
 // Reference: hg19+hg38
 //uint64_t refSizeOrg = 2836860451;
 //uint64_t refSizeUsd = 268435456;
@@ -187,7 +190,7 @@ void compressor( const uint64_t stride ) {
 
 int main( int argc, char **argv ) {
 	char *filenameS = "hg16.fasta";
-	char *filenameR = "hg19hg38Reference256Mers.bin";
+	char *filenameR = "hg19RefBook256MersFrom1.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
