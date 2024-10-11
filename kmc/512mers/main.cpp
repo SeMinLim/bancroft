@@ -121,6 +121,12 @@ void kmc( char *filename ) {
 					     make_pair(encSubseq[14], encSubseq[15])))))))))))))))) += 1;
 			} else refSizeOrg ++;
 			start += 1;
+
+			// Check the progress
+			if ( refSizeOrg % 1000000 == 0 ) {
+				printf( "[STEP 2] Generating 2-bit encoded k-mer table...[%lu]\n", refSizeOrg );
+				fflush( stdout );
+			}
 		}
 	}
 	printf( "[STEP 2] Generating 2-bit encoded k-mer table is done!\n" );
@@ -176,8 +182,8 @@ void kmc( char *filename ) {
 
 
 int main() {
-	char *filenameIn = "hg19.fasta";
-	char *filenameOut = "hg19RefBook256MersFrom1.bin";
+	char *filenameIn = "/mnt/ephemeral/hg19.fasta";
+	char *filenameOut = "/home/jovyan/hg19RefBook512MersFrom1.bin";
 	
 	// Read sequence file
 	fastaReader( filenameIn );
