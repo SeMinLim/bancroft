@@ -194,7 +194,7 @@ void kmc( char *filename ) {
 
 int main() {
 	char *filenameIn = "/mnt/ephemeral/hg19.fasta";
-	char *filenameOut = "/home/jovyan/hg19RefBook512MersFrom1.bin";
+	char *filenameOut = "/home/jovyan/hg19RefBook512MersFrom2.bin";
 	
 	// Read sequence file
 	fastaReader( filenameIn );
