@@ -76,29 +76,35 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 
 // File Reader + Sequence Shrinker
 void fastaReader( char *filename ) {
-	uint64_t pointer = 0;
+	uint64_t seqCounter = 0;
 	string seqLine;
 
 	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
-			// Shrink sequence first
+			// Shrink a sequence first
+			uint64_t pointer = 0;
 			string seqShrinked;
 			while ( true ) {
-				if ( (pointer + SHRINKLENGTH) > seqLine  ) {
+				if ( (pointer + SHRINKLENGTH) > seqLine.size()  ) {
 					break;
 				}
 				else {
 					for ( uint64_t i = pointer; i < pointer + SHRINKLENGTH; i ++ ) {
 						seqShrinked += seqLine[i];
 					}
-					pointer += SHRINKLENGTH;
+					pointer += (SHRINKLENGTH * 2);
 				}
 			}
 			
 			// Store the shrinked sequence to the vector then
 			sequences.push_back(seqShrinked);
 			seqSizeOrg += seqShrinked.size();
+
+			// Check the progress
+			printf( "[STEP 1] Shrinking a sequence #%lu is done!...[%lu]\n", seqCounter, seqShrinked.size() );
+			fflush( stdout );
+			seqCounter ++;
 		}
 	}
 
@@ -170,8 +176,8 @@ void kmc( char *filename ) {
 
 
 int main() {
-	char *filenameIn = "/mnt/ephemeral/hg19.fasta";
-	char *filenameOut = "/mnt/ephemeral/hg19ShrinkedReference256Mers.bin";
+	char *filenameIn = "/mnt/smartssd0/semin/hg19.fasta";
+	char *filenameOut = "/mnt/smartssd0/semin/hg19ShrinkedReference256Mers.bin";
 	
 	// Read sequence file
 	fastaReader( filenameIn );
