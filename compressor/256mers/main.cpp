@@ -59,7 +59,7 @@ uint64_t seqSizeRmnd = 0;
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1963010781;
+//uint64_t refSizeUsd = 2147483648;
 // Reference: hg19hg38
 //uint64_t refSizeOrg = 2825518939;
 //uint64_t refSizeUsd = 268435456;
@@ -82,6 +82,11 @@ uint64_t seqSizeRmnd = 0;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 1957754995;
+// Reference: hg19+hg38 [Cuckoo Hash]
+//uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 536870912;
+//uint64_t refSizeUsd = 1073741824;
+//uint64_t refSizeUsd = 2147483648;
 
 
 // Time Checker
