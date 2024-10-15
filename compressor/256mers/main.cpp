@@ -38,10 +38,31 @@ uint64_t seqSizeRmnd = 0;
 //uint64_t refSizeUsd = 2147483648;
 //uint64_t refSizeUsd = 2849207900;
 // Reference: hg19From1 [32LSB]
-uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 1128110488;
+// Reference: hg19From1 [RS Hash]
+//uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 536870912;
+//uint64_t refSizeUsd = 1073741824;
+//uint64_t refSizeUsd = 2076244715;
+// Reference: hg19From1 [JS Hash]
+//uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 536870912;
+//uint64_t refSizeUsd = 1073741824;
+//uint64_t refSizeUsd = 1963010781;
+// Reference: hg19From1 [Cuckoo Hash]
+//uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 536870912;
+//uint64_t refSizeUsd = 1073741824;
+//uint64_t refSizeUsd = 2147483648;
+// Reference: hg19Shrinked4KB
+//uint64_t refSizeOrg = 1428002113;
+//uint64_t refSizeUsd = 268435456;
+//uint64_t refSizeUsd = 536870912;
+//uint64_t refSizeUsd = 1073741824;
+uint64_t refSizeUsd = 1428002113;
 // Reference: hg19+hg38
 //uint64_t refSizeOrg = 2836860451;
 //uint64_t refSizeUsd = 268435456;
@@ -208,8 +229,8 @@ void compressor( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/smartssd0/semin/hg16.fasta";
-	char *filenameR = "/mnt/smartssd0/semin/hg19Reference256MersFrom1256M32LSB.bin";
+	char *filenameS = "/mnt/ephemeral/hg16.fasta";
+	char *filenameR = "/mnt/ephemeral/hg19ReferenceShrinked4KB256Mers.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
