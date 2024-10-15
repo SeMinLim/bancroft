@@ -46,12 +46,12 @@ uint64_t seqSizeRmnd = 0;
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
-uint64_t refSizeUsd = 2082620638;
+//uint64_t refSizeUsd = 2082620638;
 // Reference: hg19From1 [JS Hash]
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1963010781;
+uint64_t refSizeUsd = 1968745020;
 // Reference: hg19From1 [Cuckoo Hash]
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
@@ -230,7 +230,7 @@ void compressor( const uint64_t stride ) {
 
 int main( int argc, char **argv ) {
 	char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	char *filenameR = "/home/jovyan/hg19Reference256MersFrom11986MRSHash.bin";
+	char *filenameR = "/home/jovyan/hg19Reference256MersFrom11878MJSHash.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
