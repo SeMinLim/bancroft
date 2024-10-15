@@ -230,7 +230,7 @@ void compressor( const uint64_t stride ) {
 
 int main( int argc, char **argv ) {
 	char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	char *filenameR = "/home/jovyan/hg19Reference256MersFrom11986M32LSB.bin";
+	char *filenameR = "/home/jovyan/hg19Reference256MersFrom11986MRSHash.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
