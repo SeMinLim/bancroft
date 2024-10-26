@@ -45,7 +45,7 @@ static inline double timeChecker( void ) {
 	return (double)(tv.tv_sec) + (double)(tv.tv_usec) / 1000000;
 }
 // Descending Order Sorter
-bool descendingOrder( vector<vector<uint32_t>> &x, vector<vector<uint32_t>> &y ) {
+bool descendingOrder( vector<uint32_t> &x, vector<uint32_t> &y ) {
 	return x.size() > y.size();
 }
 // 2-bit Encoder
@@ -142,9 +142,9 @@ void seqShrinker( char *filename ) {
 		encoder(subseq, encSubseq);
 
 		// Store the index to vector if there is the same subsequence in the pre-made reference book
-		if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-				    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-				    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
+		if ( reference_kmer.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
+				          make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
+				          make_pair(encSubseq[6], encSubseq[7])))))))) != reference_kmer.end() ) {
 			index_1.push_back(start);
 		}
 		
@@ -153,7 +153,7 @@ void seqShrinker( char *filename ) {
 
 		// Check the progress
 		if ( start % 1000000 == 0 ) {
-			printf( "[STEP 3] Getting the index of the sequence is processing...[%lu]\n", start );
+			printf( "[STEP 3] Getting the index of the sequence is processing...[%u]\n", start );
 			fflush( stdout );
 		}
 	}
@@ -167,12 +167,12 @@ void seqShrinker( char *filename ) {
 
 	// Make the groups of index consisting of the sequential index
 	uint32_t group = 0;
-	for ( uint32_t i = 0 i < index_1.size(); i ++ ) {
+	for ( uint32_t i = 0; i < index_1.size(); i ++ ) {
 		// Initialization
 		if ( i == 0 ) {
 			index_2[group].push_back(index_1[i]);
 		} else {
-			if ( index_1[i] = index_1[i-1] + 1 ) {
+			if ( index_1[i] == index_1[i-1] + 1 ) {
 				index_2[group].push_back(index_1[i]);
 			} else {
 				index_2[++group].push_back(index_1[i]);
@@ -184,7 +184,7 @@ void seqShrinker( char *filename ) {
 	fflush( stdout );
 	
 	// Check each group that has the same subsequence with other group
-	for ( uint32_t i = index_2.size() - 1; i = 0; ) {
+	for ( uint32_t i = index_2.size() - 1; i >= 0; ) {
 		uint32_t flag = 0;
 		for ( uint32_t j = 0; j < index_2[i].size(); j ++ ) {
 			for ( uint32_t k = 0; k < index_2[i-1].size(); k ++ ) {
@@ -233,14 +233,18 @@ void seqShrinker( char *filename ) {
 
 
 int main() {
-	char *filenameIn = "/mnt/ephemeral/hg19.fasta";
-	char *filenameOut = "/home/jovyan/hg19ReferenceShrinked256Mers256M.bin";
+	char *filenameSeq = "/mnt/ephemeral/hg19.fasta";
+	char *filenameRef = "/mnt/ephemeral/hg19Reference256MersFrom1.bin";
+	char *filenameNew = "/mnt/ephemeral/hg19Reference256MersReduced.bin";
 	
 	// Read sequence file
-	seqReader( filenameIn );
+	seqReader( filenameSeq );
 
-	// Kmer counting
-	kmc( filenameOut);
+	// Read pre-made reference file
+	refReader( filenameRef );
+
+	// Sequence shrinker
+	seqShrinker( filenameNew );
 	
 	return 0;
 }
