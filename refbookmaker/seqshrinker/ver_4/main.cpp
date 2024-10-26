@@ -20,10 +20,9 @@ using namespace std;
 #define BINARYRWUNIT 8
 
 
-string sequences;
+vector<string> sequences;
 vector<uint32_t> index_1;
 vector<vector<uint32_t>> index_2;
-vector<uint32_t> index_size;
 map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
     uint32_t> 
     reference_kmer;
@@ -34,7 +33,7 @@ map<uint32_t,
 
 uint64_t seqSizeOrg = 0;
 uint64_t refSizeOrg = 2849207900;
-uint64_t refSizeUsd = 536870912;
+uint64_t refSizeUsd = 268435456;
 
 
 //// Required Functions
@@ -81,15 +80,15 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 // Assembled Sequence File Reader
 void seqReader( char *filename ) {
 	string seqLine;
-
+	// Read
 	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
-			sequences += seqLine;
+			sequences.push_back(seqLine);
 			seqSizeOrg += seqLine.size();
 		}
 	}
-
+	// Terminate
 	f_data_sequences.close();
 	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
 	fflush( stdout );
@@ -103,18 +102,10 @@ void refReader( char *filename ) {
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
-		// Insert 256-Mers to Map_1
+		// Insert 256-Mers to Map
 		if ( reference_kmer.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
 				           make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
 				           make_pair(encKmer[6], encKmer[7]))))))), i)).second == false ) {
-			printf( "There's a problem on reference code book...\n" );
-			fflush( stdout );
-			exit(1);
-		}
-		// Insert 256-Mers to Map_2
-		if ( reference_index.insert(make_pair(i, make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
-				            make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
-				            make_pair(encKmer[6], encKmer[7]))))))))).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);
@@ -125,7 +116,7 @@ void refReader( char *filename ) {
 			fflush( stdout );
 		}
 	}
-
+	// Terminate
 	f_data_reference.close();
 	printf( "[STEP 2] Reading pre-made reference file is done!\n" );
 	fflush( stdout );
@@ -133,56 +124,61 @@ void refReader( char *filename ) {
 // Sequence Shrinker
 void seqShrinker( char *filename ) {
 	// Get the index of sequence for each reference slot first
-	uint32_t start = 0;
-	while ( start <= sequences.size() - KMERLENGTH ) {
-		string subseq = sequences.substr(start, KMERLENGTH);
-
-		// Encode subsequence first
-		uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
-		encoder(subseq, encSubseq);
-
-		// Store the index to vector if there is the same subsequence in the pre-made reference book
-		if ( reference_kmer.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-				          make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-				          make_pair(encSubseq[6], encSubseq[7])))))))) != reference_kmer.end() ) {
-			index_1.push_back(start);
+	uint64_t index = 0;
+	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
+		uint64_t start = 0;
+		uint64_t remainder = 0;
+		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
+			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
+			// Encode subsequence first
+			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
+			encoder(subseq, encSubseq);
+			// Store the index to vector if there is the same subsequence in the pre-made reference book
+			if ( reference_kmer.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
+					         make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
+					         make_pair(encSubseq[6], encSubseq[7])))))))) != reference_kmer.end() ) {
+				index_1.push_back(index);
+			}
+			// Move forward to the next index
+			start ++;
+			index ++;
 		}
-		
-		// Move forward to the next index
-		start += 1;
-
+		// Update index
+		remainder = sequences[seqIdx].size() - start;
+		index += remainder;
 		// Check the progress
-		if ( start % 1000000 == 0 ) {
-			printf( "[STEP 3] Getting the index of the sequence is processing...[%u]\n", start );
-			fflush( stdout );
-		}
+		printf( "[STEP 3] Getting the index is progressing...[%lu/%lu]\n", seqIdx, sequences.size() );
+		fflush( stdout );
 	}
 	printf( "[STEP 3] Getting the index of the sequence is done!\n" );
+	printf( "[STEP 3] Index vector size: %lu\n", index_1.size() );
 	fflush( stdout );
 	
-	// Do sorting index_1
-	sort(index_1.begin(), index_1.end());
-	printf( "[STEP 4] Sorting the index is done!\n" );
-	fflush( stdout );
-
 	// Make the groups of index consisting of the sequential index
-	uint32_t group = 0;
-	for ( uint32_t i = 0; i < index_1.size(); i ++ ) {
+	uint64_t group = 0;
+	for ( uint64_t i = 0; i < index_1.size(); i ++ ) {
 		// Initialization
 		if ( i == 0 ) {
 			index_2[group].push_back(index_1[i]);
 		} else {
 			if ( index_1[i] == index_1[i-1] + 1 ) {
 				index_2[group].push_back(index_1[i]);
+
 			} else {
 				index_2[++group].push_back(index_1[i]);
 			}
 		}
 	}
+	index_1.clear();
+	index_1.shrink_to_fit();
 	sort(index_2.begin(), index_2.end(), descendingOrder);
+	printf( "[STEP 5] Groups      : %lu\n", index_2.size() );
+	printf( "[STEP 5] Group 1 size: %lu\n", index_2[0].size() );
+	printf( "[STEP 5] Group 2 size: %lu\n", index_2[1].size() );
+	printf( "[STEP 5] Group 3 size: %lu\n", index_2[2].size() );
 	printf( "[STEP 5] Grouping the index is done!\n" );
 	fflush( stdout );
-	
+/*
 	// Check each group that has the same subsequence with other group
 	for ( uint32_t i = index_2.size() - 1; i >= 0; ) {
 		uint32_t flag = 0;
@@ -208,7 +204,7 @@ void seqShrinker( char *filename ) {
 	}
 	printf( "size: %u\n", size );
 	fflush( stdout );
-/*
+
 	// Write the reference as binary file
 	ofstream f_data_result(filename, ios::binary);
 	for ( uint64_t i = 0; i < reference_vector.size(); i ++ ) {
