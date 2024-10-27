@@ -29,6 +29,9 @@ map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, p
 map<uint32_t, 
     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>> 
     reference_index;
+map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
+    uint32_t> 
+    reference_final;
 
 
 uint64_t seqSizeOrg = 0;
@@ -121,9 +124,20 @@ void refReader( char *filename ) {
 	printf( "[STEP 2] Reading pre-made reference file is done!\n" );
 	fflush( stdout );
 }
+// K-mer Taker
+void kmerTaker( uint64_t &encKmer, uint32_t key ) {
+	encKmer[0] = reference_index[key]->second->first;
+	encKmer[1] = reference_index[key]->second->second->first;
+	encKmer[2] = reference_index[key]->second->second->second->first;
+	encKmer[3] = reference_index[key]->second->second->second->second->first;
+	encKmer[4] = reference_index[key]->second->second->second->second->second->first;
+	encKmer[5] = reference_index[key]->second->second->second->second->second->second->first;
+	encKmer[6] = reference_index[key]->second->second->second->second->second->second->second->first;
+	encKmer[7] = reference_index[key]->second->second->second->second->second->second->second->second;
+}
 // Sequence Shrinker
 void seqShrinker( char *filename ) {
-	// Get the index of sequence for each reference slot first
+	// 1. Get the index of sequence for each reference slot first
 	uint64_t index = 0;
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
@@ -137,6 +151,10 @@ void seqShrinker( char *filename ) {
 			if ( reference_kmer.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					         make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 					         make_pair(encSubseq[6], encSubseq[7])))))))) != reference_kmer.end() ) {
+				reference_index.insert(make_pair(index, make_pair(encSubseq[0], make_pair(encSubseq[1], 
+						      make_pair(encSubseq[2], make_pair(encSubseq[3], make_pair(encSubseq[4], 
+						      make_pair(encSubseq[5], make_pair(encSubseq[6], encSubseq[7])))))))));
+
 				index_1.push_back(index);
 			}
 			// Move forward to the next index
@@ -150,49 +168,135 @@ void seqShrinker( char *filename ) {
 		printf( "[STEP 3] Getting the index is progressing...[%lu/%lu]\n", seqIdx, sequences.size() );
 		fflush( stdout );
 	}
+	reference_kmer.clear();
 	printf( "[STEP 3] Getting the index of the sequence is done!\n" );
 	printf( "[STEP 3] Index vector size: %lu\n", index_1.size() );
 	fflush( stdout );
-	
-	// Make the groups of index consisting of the sequential index
+	// 2. Make the groups of index consisting of the sequential index
 	uint64_t group = 0;
 	for ( uint64_t i = 0; i < index_1.size(); i ++ ) {
-		// Initialization
 		if ( i == 0 ) {
+			vector<uint32_t> v;
+			index_2.push_back(v);
 			index_2[group].push_back(index_1[i]);
 		} else {
 			if ( index_1[i] == index_1[i-1] + 1 ) {
 				index_2[group].push_back(index_1[i]);
 
 			} else {
+				vector<uint32_t> v;
+				index_2.push_back(v);
 				index_2[++group].push_back(index_1[i]);
 			}
 		}
 	}
 	index_1.clear();
 	index_1.shrink_to_fit();
+	printf( "[STEP 4] Grouping the index is done!\n" );
+	fflush( stdout );
+	// 3. Sort the groups via descending order of group size
 	sort(index_2.begin(), index_2.end(), descendingOrder);
+	printf( "[STEP 5] Sorting the groups is done!\n" );
 	printf( "[STEP 5] Groups      : %lu\n", index_2.size() );
 	printf( "[STEP 5] Group 1 size: %lu\n", index_2[0].size() );
 	printf( "[STEP 5] Group 2 size: %lu\n", index_2[1].size() );
 	printf( "[STEP 5] Group 3 size: %lu\n", index_2[2].size() );
-	printf( "[STEP 5] Grouping the index is done!\n" );
 	fflush( stdout );
-/*
-	// Check each group that has the same subsequence with other group
-	for ( uint32_t i = index_2.size() - 1; i >= 0; ) {
-		uint32_t flag = 0;
-		for ( uint32_t j = 0; j < index_2[i].size(); j ++ ) {
-			for ( uint32_t k = 0; k < index_2[i-1].size(); k ++ ) {
-				if ( reference_index.at(index_2[i][j]) == reference_index.at(index_2[i-1][k]) ) {
-					index_2.erase(index_2.begin() + i);
+	// 4. Check each group that has the same subsequence with other group
+	for ( uint64_t i = 0; i < index_2.size(); ) {
+		if ( i == 0 ) {
+			for ( uint64_t j = 0; j < index_2[i].size(); j ++ ) {
+				// Get the value first
+				uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
+				encKmer[0] = reference_index[index_2[i][j]]->
+					     second->first;
+				encKmer[1] = reference_index[index_2[i][j]]->
+					     second->second->first;
+				encKmer[2] = reference_index[index_2[i][j]]->
+					     second->second->second->first;
+				encKmer[3] = reference_index[index_2[i][j]]->
+					     second->second->second->second->first;
+				encKmer[4] = reference_index[index_2[i][j]]->
+					     second->second->second->second->second->first;
+				encKmer[5] = reference_index[index_2[i][j]]->
+					     second->second->second->second->second->second->first;
+				encKmer[6] = reference_index[index_2[i][j]]->
+					     second->second->second->second->second->second->second->first;
+				encKmer[7] = reference_index[index_2[i][j]]->
+					     second->second->second->second->second->second->second->second;
+				// Insert to the new reference map
+				reference_final.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], 
+						       make_pair(encKmer[2], make_pair(encKmer[3], make_pair(encKmer[4], 
+						       make_pair(encKmer[5], make_pair(encKmer[6], encKmer[7]))))))), 0));
+				// Erase the value from old reference map to manage memory capacity
+				reference_index.erase(index_2[i][j]);
+			}
+			// Go to the next group
+			i ++;
+		} else {
+			// Check whether a group can be inserted to the final reference or not first
+			uint64_t flag = 0;
+			for ( uint64_t j = 0; j < index_2[i].size(); j ++ ) {
+				// Get the value first
+				uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
+				encKmer[0] = reference_index[index_2[i][j]]->
+					     second->first;
+				encKmer[1] = reference_index[index_2[i][j]]->
+					     second->second->first;
+				encKmer[2] = reference_index[index_2[i][j]]->
+					     second->second->second->first;
+				encKmer[3] = reference_index[index_2[i][j]]->
+					     second->second->second->second->first;
+				encKmer[4] = reference_index[index_2[i][j]]->
+					     second->second->second->second->second->first;
+				encKmer[5] = reference_index[index_2[i][j]]->
+					     second->second->second->second->second->second->first;
+				encKmer[6] = reference_index[index_2[i][j]]->
+					     second->second->second->second->second->second->second->first;
+				encKmer[7] = reference_index[index_2[i][j]]->
+					     second->second->second->second->second->second->second->second;
+				// Search if there is the same subsequence in the final reference
+				if ( reference_final.find(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], 
+						          make_pair(encKmer[2], make_pair(encKmer[3], make_pair(encKmer[4], 
+						          make_pair(encKmer[5], make_pair(encKmer[6], encKmer[7]))))))))) != 
+							  reference_final.end() ) {
 					flag = 1;
 					break;
 				}
 			}
-			if ( flag == 1 ) break;
+			// Insert or delete
+			if ( flag == 0 ) {
+				for ( uint64_t j = 0; j < index_2[i].size(); j ++ ) {
+					// Get the value first
+					uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
+					encKmer[0] = reference_index[index_2[i][j]]->
+						     second->first;
+					encKmer[1] = reference_index[index_2[i][j]]->
+						     second->second->first;
+					encKmer[2] = reference_index[index_2[i][j]]->
+						     second->second->second->first;
+					encKmer[3] = reference_index[index_2[i][j]]->
+						     second->second->second->second->first;
+					encKmer[4] = reference_index[index_2[i][j]]->
+						     second->second->second->second->second->first;
+					encKmer[5] = reference_index[index_2[i][j]]->
+						     second->second->second->second->second->second->first;
+					encKmer[6] = reference_index[index_2[i][j]]->
+						     second->second->second->second->second->second->second->first;
+					encKmer[7] = reference_index[index_2[i][j]]->
+						     second->second->second->second->second->second->second->second;
+					// Insert to the new reference map
+					reference_final.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], 
+							       make_pair(encKmer[2], make_pair(encKmer[3], make_pair(encKmer[4], 
+							       make_pair(encKmer[5], make_pair(encKmer[6], encKmer[7]))))))), 0));
+					// Erase the value from old reference map to manage memory capacity
+					reference_index.erase(index_2[i][j]);
+				}
+
+			} else {
+			}
+			
 		}
-		if (flag == 0) i --;
 	}
 	printf( "[STEP 6] Erasing a smaller group is done!\n" );
 	fflush( stdout );
@@ -224,11 +328,12 @@ void seqShrinker( char *filename ) {
 	f_data_result.close();
 	printf( "[STEP 4] Writing the k-mers as binary is done\n" );
 	fflush( stdout );
-*/
-}
 
+}
+*/
 
 int main() {
+	/*
 	char *filenameSeq = "/mnt/ephemeral/hg19.fasta";
 	char *filenameRef = "/mnt/ephemeral/hg19Reference256MersFrom1.bin";
 	char *filenameNew = "/mnt/ephemeral/hg19Reference256MersReduced.bin";
@@ -241,6 +346,13 @@ int main() {
 
 	// Sequence shrinker
 	seqShrinker( filenameNew );
-	
+	*/
+
+	vector<uint32_t> v;
+	index_2.push_back(v);
+	index_2[0].push_back(1);
+	index_2[0].push_back(2);
+	printf( "%u\n", index_2[0][0] );
+	printf( "%u\n", index_2[0][1] );
 	return 0;
 }
