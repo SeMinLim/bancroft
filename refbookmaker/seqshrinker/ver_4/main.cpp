@@ -125,15 +125,15 @@ void refReader( char *filename ) {
 	fflush( stdout );
 }
 // K-mer Taker
-void kmerTaker( uint64_t &encKmer, uint32_t key ) {
-	encKmer[0] = reference_index[key]->second->first;
-	encKmer[1] = reference_index[key]->second->second->first;
-	encKmer[2] = reference_index[key]->second->second->second->first;
-	encKmer[3] = reference_index[key]->second->second->second->second->first;
-	encKmer[4] = reference_index[key]->second->second->second->second->second->first;
-	encKmer[5] = reference_index[key]->second->second->second->second->second->second->first;
-	encKmer[6] = reference_index[key]->second->second->second->second->second->second->second->first;
-	encKmer[7] = reference_index[key]->second->second->second->second->second->second->second->second;
+void kmerTaker( uint64_t *encKmer, uint32_t key ) {
+	encKmer[0] = reference_index[key].first;
+	encKmer[1] = reference_index[key].second.first;
+	encKmer[2] = reference_index[key].second.second.first;
+	encKmer[3] = reference_index[key].second.second.second.first;
+	encKmer[4] = reference_index[key].second.second.second.second.first;
+	encKmer[5] = reference_index[key].second.second.second.second.second.first;
+	encKmer[6] = reference_index[key].second.second.second.second.second.second.first;
+	encKmer[7] = reference_index[key].second.second.second.second.second.second.second;
 }
 // Sequence Shrinker
 void seqShrinker( char *filename ) {
@@ -170,7 +170,7 @@ void seqShrinker( char *filename ) {
 	}
 	reference_kmer.clear();
 	printf( "[STEP 3] Getting the index of the sequence is done!\n" );
-	printf( "[STEP 3] Index vector size: %lu\n", index_1.size() );
+	printf( "[STEP 3] Index       : %lu\n", index_1.size() );
 	fflush( stdout );
 	// 2. Make the groups of index consisting of the sequential index
 	uint64_t group = 0;
@@ -208,22 +208,7 @@ void seqShrinker( char *filename ) {
 			for ( uint64_t j = 0; j < index_2[i].size(); j ++ ) {
 				// Get the value first
 				uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
-				encKmer[0] = reference_index[index_2[i][j]]->
-					     second->first;
-				encKmer[1] = reference_index[index_2[i][j]]->
-					     second->second->first;
-				encKmer[2] = reference_index[index_2[i][j]]->
-					     second->second->second->first;
-				encKmer[3] = reference_index[index_2[i][j]]->
-					     second->second->second->second->first;
-				encKmer[4] = reference_index[index_2[i][j]]->
-					     second->second->second->second->second->first;
-				encKmer[5] = reference_index[index_2[i][j]]->
-					     second->second->second->second->second->second->first;
-				encKmer[6] = reference_index[index_2[i][j]]->
-					     second->second->second->second->second->second->second->first;
-				encKmer[7] = reference_index[index_2[i][j]]->
-					     second->second->second->second->second->second->second->second;
+				kmerTaker(encKmer, index_2[i][j]);
 				// Insert to the new reference map
 				reference_final.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], 
 						       make_pair(encKmer[2], make_pair(encKmer[3], make_pair(encKmer[4], 
@@ -239,26 +224,11 @@ void seqShrinker( char *filename ) {
 			for ( uint64_t j = 0; j < index_2[i].size(); j ++ ) {
 				// Get the value first
 				uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
-				encKmer[0] = reference_index[index_2[i][j]]->
-					     second->first;
-				encKmer[1] = reference_index[index_2[i][j]]->
-					     second->second->first;
-				encKmer[2] = reference_index[index_2[i][j]]->
-					     second->second->second->first;
-				encKmer[3] = reference_index[index_2[i][j]]->
-					     second->second->second->second->first;
-				encKmer[4] = reference_index[index_2[i][j]]->
-					     second->second->second->second->second->first;
-				encKmer[5] = reference_index[index_2[i][j]]->
-					     second->second->second->second->second->second->first;
-				encKmer[6] = reference_index[index_2[i][j]]->
-					     second->second->second->second->second->second->second->first;
-				encKmer[7] = reference_index[index_2[i][j]]->
-					     second->second->second->second->second->second->second->second;
+				kmerTaker(encKmer, index_2[i][j]);
 				// Search if there is the same subsequence in the final reference
-				if ( reference_final.find(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], 
+				if ( reference_final.find(make_pair(encKmer[0], make_pair(encKmer[1], 
 						          make_pair(encKmer[2], make_pair(encKmer[3], make_pair(encKmer[4], 
-						          make_pair(encKmer[5], make_pair(encKmer[6], encKmer[7]))))))))) != 
+						          make_pair(encKmer[5], make_pair(encKmer[6], encKmer[7])))))))) != 
 							  reference_final.end() ) {
 					flag = 1;
 					break;
@@ -266,25 +236,11 @@ void seqShrinker( char *filename ) {
 			}
 			// Insert or delete
 			if ( flag == 0 ) {
+				// Insert a group to the final reference
 				for ( uint64_t j = 0; j < index_2[i].size(); j ++ ) {
 					// Get the value first
 					uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
-					encKmer[0] = reference_index[index_2[i][j]]->
-						     second->first;
-					encKmer[1] = reference_index[index_2[i][j]]->
-						     second->second->first;
-					encKmer[2] = reference_index[index_2[i][j]]->
-						     second->second->second->first;
-					encKmer[3] = reference_index[index_2[i][j]]->
-						     second->second->second->second->first;
-					encKmer[4] = reference_index[index_2[i][j]]->
-						     second->second->second->second->second->first;
-					encKmer[5] = reference_index[index_2[i][j]]->
-						     second->second->second->second->second->second->first;
-					encKmer[6] = reference_index[index_2[i][j]]->
-						     second->second->second->second->second->second->second->first;
-					encKmer[7] = reference_index[index_2[i][j]]->
-						     second->second->second->second->second->second->second->second;
+					kmerTaker(encKmer, index_2[i][j]);
 					// Insert to the new reference map
 					reference_final.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], 
 							       make_pair(encKmer[2], make_pair(encKmer[3], make_pair(encKmer[4], 
@@ -292,23 +248,27 @@ void seqShrinker( char *filename ) {
 					// Erase the value from old reference map to manage memory capacity
 					reference_index.erase(index_2[i][j]);
 				}
-
+				// Go to the next group
+				i ++;
 			} else {
+				// Delete a group
+				for ( uint64_t j = 0; j < index_2[i].size(); j ++ ) {
+					reference_index.erase(index_2[i][j]);
+				}
+				// Go to the next group
+				index_2.erase(index_2.begin() + i);
 			}
-			
 		}
 	}
-	printf( "[STEP 6] Erasing a smaller group is done!\n" );
-	fflush( stdout );
-
-	// Check the length of new sequence
-	uint32_t size = 0;
-	for ( uint32_t i = 0; i < index_2.size(); i ++ ) {
-		size = 256 + index_2[i].size() - 1;
+	uint64_t seqLength = 0;
+	for ( uint64_t i = 0; i < index_2.size(); i ++ ) {
+		seqLength += 256 + index_2[i].size() - 1;
 	}
-	printf( "size: %u\n", size );
+	printf( "[STEP 6] Erasing the groups, smaller but having the same kmer is done!\n" );
+	printf( "[STEP 6] Groups         : %lu\n", index_2.size() );
+	printf( "[STEP 6] Sequence Length: %lu\n", seqLength );
 	fflush( stdout );
-
+/*
 	// Write the reference as binary file
 	ofstream f_data_result(filename, ios::binary);
 	for ( uint64_t i = 0; i < reference_vector.size(); i ++ ) {
@@ -328,12 +288,11 @@ void seqShrinker( char *filename ) {
 	f_data_result.close();
 	printf( "[STEP 4] Writing the k-mers as binary is done\n" );
 	fflush( stdout );
-
-}
 */
+}
+
 
 int main() {
-	/*
 	char *filenameSeq = "/mnt/ephemeral/hg19.fasta";
 	char *filenameRef = "/mnt/ephemeral/hg19Reference256MersFrom1.bin";
 	char *filenameNew = "/mnt/ephemeral/hg19Reference256MersReduced.bin";
@@ -346,13 +305,6 @@ int main() {
 
 	// Sequence shrinker
 	seqShrinker( filenameNew );
-	*/
 
-	vector<uint32_t> v;
-	index_2.push_back(v);
-	index_2[0].push_back(1);
-	index_2[0].push_back(2);
-	printf( "%u\n", index_2[0][0] );
-	printf( "%u\n", index_2[0][1] );
 	return 0;
 }
