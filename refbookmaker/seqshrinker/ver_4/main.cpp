@@ -214,7 +214,7 @@ void seqShrinker( char *filename ) {
 						       make_pair(encKmer[2], make_pair(encKmer[3], make_pair(encKmer[4], 
 						       make_pair(encKmer[5], make_pair(encKmer[6], encKmer[7]))))))), 0));
 				// Erase the value from old reference map to manage memory capacity
-				reference_index.erase(index_2[i][j]);
+				//reference_index.erase(index_2[i][j]);
 			}
 			// Go to the next group
 			i ++;
@@ -246,19 +246,21 @@ void seqShrinker( char *filename ) {
 							       make_pair(encKmer[2], make_pair(encKmer[3], make_pair(encKmer[4], 
 							       make_pair(encKmer[5], make_pair(encKmer[6], encKmer[7]))))))), 0));
 					// Erase the value from old reference map to manage memory capacity
-					reference_index.erase(index_2[i][j]);
+					//reference_index.erase(index_2[i][j]);
 				}
 				// Go to the next group
 				i ++;
 			} else {
 				// Delete a group
-				for ( uint64_t j = 0; j < index_2[i].size(); j ++ ) {
-					reference_index.erase(index_2[i][j]);
-				}
+				//for ( uint64_t j = 0; j < index_2[i].size(); j ++ ) {
+				//	reference_index.erase(index_2[i][j]);
+				//}
 				// Go to the next group
 				index_2.erase(index_2.begin() + i);
 			}
 		}
+		printf( "[STEP 6] Erasing the groups is processing...[%lu/%lu]\n", i, index_2.size() );
+		fflush( stdout );
 	}
 	uint64_t seqLength = 0;
 	for ( uint64_t i = 0; i < index_2.size(); i ++ ) {
