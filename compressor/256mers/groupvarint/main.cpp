@@ -20,7 +20,8 @@ using namespace std;
 
 vector<string> sequences;
 vector<uint32_t> index;
-map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t> reference;
+map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
+	 uint32_t> reference;
 
 
 uint64_t seqSizeOrg = 0;
@@ -146,11 +147,11 @@ void refReader( char *filename ) {
 	ifstream f_data_reference(filename, ios::binary);
 	for ( uint64_t i = 0; i < refSizeUsd; i ++ ) {
 		uint64_t encKmer[ENCKMERBUFSIZE + 1] = {0, };
-		// Read
+		// Read 256-mer and index
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
-		// Insert 256-Mers to Map
+		// Insert 256-mer and index to Map
 		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
 				      make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
 				      make_pair(encKmer[6], encKmer[7]))))))), encKmer[8])).second == false ) {
@@ -217,9 +218,7 @@ void compressor( const uint64_t stride ) {
 							     make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 							     make_pair(encSubseq[6], encSubseq[7])))))))));
 				if ( seqSizeCmpP != 0 ) {
-					if ( reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-							  make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-							  make_pair(encSubseq[6], encSubseq[7])))))))) == index[seqSizeCmpP - 1] ) {
+					if ( index[seqSizeCmpP] == index[seqSizeCmpP - 1] ) {
 						seqSizeCmpI ++;
 					}
 				}	
@@ -242,7 +241,7 @@ void compressor( const uint64_t stride ) {
 
 int main( int argc, char **argv ) {
 	char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	char *filenameR = "/home/jovyan/hg19Reference256MersFrom11878MJSHash.bin";
+	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
@@ -257,8 +256,8 @@ int main( int argc, char **argv ) {
 		seqSizeCmpP = 0;
 		seqSizeRmnd = 0;
 
-		uint64_t refCompHeaderN = 2 + (stride * 2);
-		uint64_t refCompHeaderP = 2 + (32 * (seqSizeCmpP - seqSizeCmpI));
+		uint64_t refCompN = (2 + (stride * 2)) * seqSizeCmpN;
+		uint64_t refCompP = (2 * seqSizeCmpP) + (32 * (seqSizeCmpP - seqSizeCmpI));
 		
 		double processStart = timeChecker();
 		compressor( stride );
@@ -279,7 +278,7 @@ int main( int argc, char **argv ) {
 		printf( "Stride                  : %lu\n", stride );
 		printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
 		printf( "The Compressed File Size: %0.4f MB\n", 
-		     	(double)((seqSizeCmpN * refCompHeaderN) + (refCompHeaderP) + seqSizeRmnd) / 8 / 1024 / 1024 );
+		     	(double)(refCompN + refCompP + seqSizeRmnd) / 8 / 1024 / 1024 );
 		printf( "Elapsed Time: %lf\n", elapsedTime );
 	}
 

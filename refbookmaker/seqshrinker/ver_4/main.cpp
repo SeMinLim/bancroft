@@ -14,13 +14,13 @@ using namespace std;
 
 
 #define KMERLENGTH 256
-#define SHRINKLENGTH 1073741824
+#define GROUPUNIT 16384
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 8
 #define BINARYRWUNIT 8
 
 
-uint64_t seqSizeOrg = 0;
+uint64_t seqSizeOrg = 2849207900;
 uint64_t refSizeOrg = 0;
 
 
@@ -77,13 +77,20 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 	}
 }
 // Assembled Sequence File Reader
-void fastaReader( char *filename ) {
+void seqReader( char *filename ) {
 	string seqLine;
 	// Read
 	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
-			sequences.push_back(seqLine);
+			uint64_t numGroups = seqLine.size() / GROUPUNIT;
+			if ( numGroups > 0 ) {
+				for ( uint64_t idx = 0; idx < numGroups; idx ++ ) {
+					uint64_t start = GROUPUNIT * idx;
+					string subseq = seqLine.substr(start, GROUPUNIT);
+					sequences.push_back(subseq);
+				}
+			}
 			seqSizeOrg += seqLine.size();
 		}
 	}
@@ -96,15 +103,15 @@ void fastaReader( char *filename ) {
 void refReader( char *filename ) {
 	ifstream f_data_reference(filename, ios::binary);
 	for ( uint64_t i = 0; i < refSizeUsd; i ++ ) {
-		uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
-		// Read
-		for ( uint64_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
+		uint64_t encKmer[ENCKMERBUFSIZE + 1] = {0, };
+		// Read kmer and occurrence at the same time
+		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
-		// Insert 256-Mers to Map
-		if ( reference_kmer.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
-				           make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
-				           make_pair(encKmer[6], encKmer[7]))))))), i)).second == false ) {
+		// Insert 256-Mers and occurrence to Map
+		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
+				      		make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
+				      		make_pair(encKmer[6], encKmer[7]))))))), encKmer[8])).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);
@@ -127,16 +134,19 @@ void groupSelector( char *filename ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
-			// Encode first
+			// Encode subsequence first
 			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
 			encoder(subseq, encSubseq);
-			// 
-			if ( reference.insert(make_pair(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-					      make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-					      make_pair(encSubseq[6], encSubseq[7]))))))), 1)).second == false ) {
-				reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-					     make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5],
-					     make_pair(encSubseq[6], encSubseq[7])))))))) += 1;
+			// Get the occurrence of the subsequence
+			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
+					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
+					    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
+				if ( start == 0 ) {
+					groups.push_back(reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], 
+								      make_pair(encSubseq[2], make_pair(encSubseq[3], 
+								      make_pair(encSubseq[4], make_pair(encSubseq[5],
+					     	     		      make_pair(encSubseq[6], encSubseq[7])))))))));
+				} else groups[seqIdx] += reference.at(make_pair(encSubseq[0]));
 			} else refSizeOrg ++;
 			start += 1;
 
