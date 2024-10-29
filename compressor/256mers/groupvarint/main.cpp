@@ -19,10 +19,12 @@ using namespace std;
 
 
 vector<string> sequences;
+vector<uint32_t> index;
 map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t> reference;
 
 
 uint64_t seqSizeOrg = 0;
+uint64_t seqSizeCmpI = 0;
 uint64_t seqSizeCmpN = 0;
 uint64_t seqSizeCmpP = 0;
 uint64_t seqSizeRmnd = 0;
@@ -36,7 +38,7 @@ uint64_t seqSizeRmnd = 0;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2147483648;
-//uint64_t refSizeUsd = 2849207900;
+uint64_t refSizeUsd = 2849207900;
 // Reference: hg19From1 [32LSB]
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
@@ -51,7 +53,7 @@ uint64_t seqSizeRmnd = 0;
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
-uint64_t refSizeUsd = 1968745020;
+//uint64_t refSizeUsd = 1968745020;
 // Reference: hg19From1 [Cuckoo Hash]
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
@@ -143,15 +145,15 @@ void seqReader( char *filename ) {
 void refReader( char *filename ) {
 	ifstream f_data_reference(filename, ios::binary);
 	for ( uint64_t i = 0; i < refSizeUsd; i ++ ) {
-		uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
+		uint64_t encKmer[ENCKMERBUFSIZE + 1] = {0, };
 		// Read
-		for ( uint64_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
+		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
 		// Insert 256-Mers to Map
 		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
 				      make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
-				      make_pair(encKmer[6], encKmer[7]))))))), i)).second == false ) {
+				      make_pair(encKmer[6], encKmer[7]))))))), encKmer[8])).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);
@@ -211,6 +213,16 @@ void compressor( const uint64_t stride ) {
 			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 					    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
+				index.push_back(reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
+							     make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
+							     make_pair(encSubseq[6], encSubseq[7])))))))));
+				if ( seqSizeCmpP != 0 ) {
+					if ( reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
+							  make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
+							  make_pair(encSubseq[6], encSubseq[7])))))))) == index[seqSizeCmpP - 1] ) {
+						seqSizeCmpI ++;
+					}
+				}	
 				seqSizeCmpP ++;
 				start += KMERLENGTH;
 			} else {
@@ -240,13 +252,14 @@ int main( int argc, char **argv ) {
 
 	// Compression
 	for ( uint64_t stride = 1; stride < 512; stride = stride * 2 ) {
-		uint64_t refCompIndexN = 1 + stride * 2;
-		uint64_t refCompIndexP = 1 + 32;
-
+		seqSizeCmpI = 0;
 		seqSizeCmpN = 0;
 		seqSizeCmpP = 0;
 		seqSizeRmnd = 0;
 
+		uint64_t refCompHeaderN = 2 + (stride * 2);
+		uint64_t refCompHeaderP = 2 + (32 * (seqSizeCmpP - seqSizeCmpI));
+		
 		double processStart = timeChecker();
 		compressor( stride );
 		double processFinish = timeChecker();
@@ -266,7 +279,7 @@ int main( int argc, char **argv ) {
 		printf( "Stride                  : %lu\n", stride );
 		printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
 		printf( "The Compressed File Size: %0.4f MB\n", 
-		     	(double)((seqSizeCmpN * refCompIndexN) + (seqSizeCmpP * refCompIndexP) + seqSizeRmnd) / 8 / 1024 / 1024 );
+		     	(double)((seqSizeCmpN * refCompHeaderN) + (refCompHeaderP) + seqSizeRmnd) / 8 / 1024 / 1024 );
 		printf( "Elapsed Time: %lf\n", elapsedTime );
 	}
 
