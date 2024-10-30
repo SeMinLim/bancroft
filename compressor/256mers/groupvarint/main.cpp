@@ -154,7 +154,7 @@ void refReader( char *filename ) {
 		// Insert 256-mer and index to Map
 		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
 				      make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
-				      make_pair(encKmer[6], encKmer[7]))))))), encKmer[8])).second == false ) {
+				      make_pair(encKmer[6], encKmer[7]))))))), (uint32_t)encKmer[8])).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);

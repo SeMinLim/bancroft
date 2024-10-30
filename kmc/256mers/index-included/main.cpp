@@ -25,25 +25,26 @@ uint64_t refSizeOrg = 0;
 
 vector<string> sequences;
 map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
-    uint32_t> reference;
+    pair<uint32_t, uint32_t>> reference;
 
 
-// Required Functions
+//// Required Functions
+// Time Checker
 static inline double timeChecker( void ) {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return (double)(tv.tv_sec) + (double)(tv.tv_usec) / 1000000;
 }
-bool decendingOrder( pair<
-		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
-		     pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t>& x, 
-		     pair<
-		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
-		     pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t>& y ) {
-	return x.second > y.second;
+// Descending Order Sorter
+bool descendingOrder( pair<
+		      pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
+		      pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, pair<uint32_t, uint32_t>>& x, 
+		      pair<
+		      pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
+		      pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, pair<uint32_t, uint32_t>>& y ) {
+	return x.second.second > y.second.second;
 }
-
-// Encoder & Decoder
+// 2-bit Encoder
 void encoder( string seqLine, uint64_t *encKmer ) {
 	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		encKmer[i] = 0;
@@ -60,6 +61,7 @@ void encoder( string seqLine, uint64_t *encKmer ) {
 		}
 	}
 }
+// 2-bit Decoder
 void decoder( const uint64_t *encKmer, string &seqLine ) {
 	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		for ( uint64_t j = 0; j < ENCKMERBUFUNIT; j ++ ) {
@@ -72,11 +74,10 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 		}
 	}
 }
-
-// File Reader
+// Sequence File Reader
 void fastaReader( char *filename ) {
 	string seqLine;
-
+	// Read
 	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
@@ -84,12 +85,12 @@ void fastaReader( char *filename ) {
 			seqSizeOrg += seqLine.size();
 		}
 	}
-
+	// Terminate
 	f_data_sequences.close();
 	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
 	fflush( stdout );
 }
-
+// KMC
 void kmc( char *filename ) {
 	// Do 2-bit Encoding & Put all 256-mers to Map & Count the number of occurrence
 	uint32_t index = 0;
@@ -98,43 +99,39 @@ void kmc( char *filename ) {
 		uint32_t remainder = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
-
 			// Encode first
 			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
 			encoder(subseq, encSubseq);
-
-			// Put 256-mers and index to the reference
+			// Put 256-mers, index, and occurrence to the reference
 			if ( reference.insert(make_pair(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					      make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-					      make_pair(encSubseq[6], encSubseq[7]))))))), index)).second == true ) {
-				refSizeOrg ++;
-			}
+					      make_pair(encSubseq[6], encSubseq[7]))))))), make_pair(index, 1))).second == false ) {
+				reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
+					     make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
+					     make_pair(encSubseq[6], encSubseq[7])))))))).second += 1;
+			} else refSizeOrg ++;
 			start += 1;
 			index += 1;
-
 			// Check the progress
 			if ( refSizeOrg % 1000000 == 0 ) {
 				printf( "[STEP 2] Generating 2-bit encoded k-mer table...[%lu]\n", refSizeOrg );
 				fflush( stdout );
 			}
 		}
-
 		// Update the index
 		remainder = sequences[seqIdx].size() - start;
 		index += remainder;
 	}
 	printf( "[STEP 2] Generating 2-bit encoded k-mer table is done!\n" );
 	fflush( stdout );
-	
 	// Do sorting
 	vector<pair<
 	       pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
 	       pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
-	       uint32_t>> reference_vector(reference.begin(), reference.end());
-	sort(reference_vector.begin(), reference_vector.end(), decendingOrder);
+	       pair<uint32_t, uint32_t>>> reference_vector(reference.begin(), reference.end());
+	sort(reference_vector.begin(), reference_vector.end(), descendingOrder);
 	printf( "[STEP 3] Sorting the k-mers through decending order is done!\n" );
 	fflush( stdout );
-
 	// Write the reference as binary file
 	ofstream f_data_result(filename, ios::binary);
 	for ( uint64_t i = 0; i < reference_vector.size(); i ++ ) {
@@ -147,7 +144,7 @@ void kmc( char *filename ) {
 		encKmer[5] = reference_vector[i].first.second.second.second.second.second.first;
 		encKmer[6] = reference_vector[i].first.second.second.second.second.second.second.first;
 		encKmer[7] = reference_vector[i].first.second.second.second.second.second.second.second;
-		encKmer[8] = (uint64_t)reference_vector[i].second;
+		encKmer[8] = (uint64_t)reference_vector[i].second.first;
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
 			f_data_result.write(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
