@@ -164,7 +164,7 @@ int main() {
 
 	// Kmer counting
 	double processStartKmc = timeChecker();
-	kmc( filenameOut);
+	kmc( filenameOut );
 	double processFinishKmc = timeChecker();
 	double elapsedTimeKmc = processFinishKmc - processStartKmc;
 	
