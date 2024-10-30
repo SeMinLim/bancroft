@@ -22,6 +22,7 @@ using namespace std;
 
 uint64_t seqSizeOrg = 0;
 uint64_t refSizeOrg = 2849207900;
+uint64_t seqSizeOrgNew = 1073741824;
 uint64_t refSizeOrgNew = 0;
 
 
@@ -162,8 +163,10 @@ void groupSelector( void ) {
 			start += 1;
 		}
 		// Check the progress
-		printf( "[STEP 3] Couting occurrence is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
-		fflush( stdout );
+		if ( seqIdx % 1000 == 0 ) {
+			printf( "[STEP 3] Couting occurrence is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
+			fflush( stdout );
+		}
 	}
 	printf( "[STEP 3] Counting occurrence is done!\n" );
 	fflush( stdout );
@@ -262,10 +265,10 @@ int main() {
 	
 	printf( "--------------------------------------------\n" );
 	printf( "KMC RESULT\n" );
-	printf( "KMER [Total]: %ld\n", seqSizeOrg );
-	printf( "KMER [Count]: %ld\n", refSizeOrg );
-	printf( "KMER [Percentage]: %0.8f\n", (double)(refSizeOrg / seqSizeOrg) * 100 );
-	printf( "Reference Book [Size]: %0.4f GB\n", (double)((refSizeOrg * 512) + (refSizeOrg * 32)) / 8 / 1024 / 1024 / 1024 );
+	printf( "KMER [Total]: %ld\n", seqSizeOrgNew );
+	printf( "KMER [Count]: %ld\n", refSizeOrgNew );
+	printf( "KMER [Percentage]: %0.8f\n", (double)(refSizeOrgNew / seqSizeOrgNew) * (double)100.00 );
+	printf( "Reference Book [Size]: %0.4f GB\n", (double)((refSizeOrgNew * 512) + (refSizeOrgNew * 30)) / 8 / 1024 / 1024 / 1024 );
 	printf( "Elapsed Time: %lf\n", elapsedTimeKmc );
 	printf( "--------------------------------------------\n" );
 	
