@@ -260,15 +260,14 @@ int main( int argc, char **argv ) {
 		seqSizeCmpI = 0;
 		seqSizeCmpP = 0;
 		seqSizeRmnd = 0;
-
-		uint64_t refCompN = (2 + (stride * 2)) * seqSizeCmpN;
-		uint64_t refCompP = (2 * seqSizeCmpP) + (32 * (seqSizeCmpP - seqSizeCmpI));
 		
 		double processStart = timeChecker();
 		compressor( stride );
 		double processFinish = timeChecker();
 		double elapsedTime = processFinish - processStart;
 
+		uint64_t refCompN = (2 + (stride * 2)) * seqSizeCmpN;
+		uint64_t refCompP = (2 * seqSizeCmpP) + (32 * (seqSizeCmpP - seqSizeCmpI));
 		// Results
 		printf( "--------------------------------------------\n" );
 		printf( "REFERENCE\n" );
@@ -284,6 +283,7 @@ int main( int argc, char **argv ) {
 		printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
 		printf( "The Compressed File Size: %0.4f MB\n", 
 		     	(double)(refCompN + refCompP + seqSizeRmnd) / 8 / 1024 / 1024 );
+		printf( "Sequential Percentage   : %0.4f\n", ((double)seqSizeCmpI / (double)seqSizeCmpP) * 100.00 );
 		printf( "Elapsed Time: %lf\n", elapsedTime );
 	}
 
