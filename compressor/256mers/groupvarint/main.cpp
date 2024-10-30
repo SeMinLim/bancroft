@@ -25,10 +25,11 @@ map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, p
 
 
 uint64_t seqSizeOrg = 0;
-uint64_t seqSizeCmpI = 0;
 uint64_t seqSizeCmpN = 0;
+uint64_t seqSizeCmpI = 0;
 uint64_t seqSizeCmpP = 0;
 uint64_t seqSizeRmnd = 0;
+
 
 // Reference: hg19From2
 //uint64_t refSizeOrg = 10976427;
@@ -122,17 +123,17 @@ uint64_t refSizeUsd = 2849207900;
 //uint64_t refSizeUsd = 2147483648;
 
 
+// Required Functions
 // Time Checker
 static inline double timeChecker( void ) {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return (double)(tv.tv_sec) + (double)(tv.tv_usec) / 1000000;
 }
-
-// File Readers
+// Sequence File Reader
 void seqReader( char *filename ) {
 	string seqLine;
-
+	// Read
 	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
@@ -140,9 +141,12 @@ void seqReader( char *filename ) {
 			seqSizeOrg += seqLine.size();
 		}
 	}
-
+	// Terminate
 	f_data_sequences.close();
+	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
+	fflush( stdout );
 }
+// Reference File Reader
 void refReader( char *filename ) {
 	ifstream f_data_reference(filename, ios::binary);
 	for ( uint64_t i = 0; i < refSizeUsd; i ++ ) {
@@ -161,15 +165,16 @@ void refReader( char *filename ) {
 		}
 		// Check the progress
 		if ( i % 1000000 == 0 ) {
-			printf( "Reference: %lu\n", i );
+			printf( "[STEP 2] Reading reference is processing...[%lu/%lu]\n", i, refSizeUsd );
 			fflush( stdout );
 		}
 	}
-
+	// Terminate
 	f_data_reference.close();
+	printf( "[STEP 2] Reading reference is done!\n" );
+	fflush( stdout );
 }
-
-// Encoder & Decoder
+// 2-bit Encoder
 void encoder( string seqLine, uint64_t *encKmer ) {
 	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		encKmer[i] = 0;
@@ -186,6 +191,7 @@ void encoder( string seqLine, uint64_t *encKmer ) {
 		}
 	}
 }
+// 2-bit Decoder
 void decoder( const uint64_t *encKmer, string &seqLine ) {
 	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		for ( uint64_t j = 0; j < ENCKMERBUFUNIT; j ++ ) {
@@ -198,27 +204,26 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 		}
 	}
 }
-
 // Compressor
 void compressor( const uint64_t stride ) {
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
-
 			// Encode first
 			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
 			encoder(subseq, encSubseq);
-
 			// Check possible to compress
 			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 					    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
+				// Possible to compress, then put index to the vector first
 				index.push_back(reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 							     make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 							     make_pair(encSubseq[6], encSubseq[7])))))))));
+				// Compare the current index to the previous one
 				if ( seqSizeCmpP != 0 ) {
-					if ( index[seqSizeCmpP] == index[seqSizeCmpP - 1] ) {
+					if ( index[seqSizeCmpP] == (index[seqSizeCmpP - 1] + 1) ) {
 						seqSizeCmpI ++;
 					}
 				}	
@@ -232,7 +237,7 @@ void compressor( const uint64_t stride ) {
 		// Handle remainder
 		uint64_t remainder = sequences[seqIdx].size() - start;
 		if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
-
+		// Check the progress
 		printf( "Compressing #%lu Sequences is Done!\n", seqIdx );
 		fflush( stdout );
 	}
@@ -251,8 +256,8 @@ int main( int argc, char **argv ) {
 
 	// Compression
 	for ( uint64_t stride = 1; stride < 512; stride = stride * 2 ) {
-		seqSizeCmpI = 0;
 		seqSizeCmpN = 0;
+		seqSizeCmpI = 0;
 		seqSizeCmpP = 0;
 		seqSizeRmnd = 0;
 
