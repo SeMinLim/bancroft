@@ -22,7 +22,7 @@ using namespace std;
 
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeRdc = 1073741824;
-uint64_t refSizeOrg = 0;
+uint64_t refSizeRdc = 0;
 
 
 string sequenceOrg;
@@ -85,6 +85,7 @@ void seqReader( char *filename ) {
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
 			sequenceOrg += seqLine;
+			seqSizeOrg += seqLine.size();
 		}
 	}
 	// Terminate
@@ -126,11 +127,11 @@ void kmc( char *filename ) {
 			reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 				     make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5],
 				     make_pair(encSubseq[6], encSubseq[7])))))))).second += 1;
-		} else refSizeOrg ++;
+		} else refSizeRdc ++;
 		start += 1;
 		// Check the progress
-		if ( refSizeOrg % 1000000 == 0 ) {
-			printf( "[STEP 3] Generating 2-bit encoded k-mer table...[%lu]\n", refSizeOrg );
+		if ( refSizeRdc % 1000000 == 0 ) {
+			printf( "[STEP 3] Generating 2-bit encoded k-mer table...[%lu]\n", refSizeRdc );
 			fflush( stdout );
 		}
 	}
@@ -187,10 +188,10 @@ int main() {
 	double elapsedTimeKmc = processFinishKmc - processStartKmc;
 	
 	printf( "KMC RESULT\n" );
-	printf( "KMER [Total]: %ld\n", seqSizeOrg );
-	printf( "KMER [Count]: %ld\n", refSizeOrg );
-	printf( "KMER [Percentage]: %0.4f\n", ((double)refSizeOrg / (double)seqSizeOrg) * (double)100.00 );
-	printf( "Reference Book [Size]: %0.4f GB\n", (double)((refSizeOrg * 512) + (refSizeOrg * 30)) / 8 / 1024 / 1024 / 1024 );
+	printf( "KMER [Total]: %ld\n", seqSizeRdc );
+	printf( "KMER [Count]: %ld\n", refSizeRdc );
+	printf( "KMER [Percentage]: %0.4f\n", ((double)refSizeRdc / (double)seqSizeRdc) * (double)100.00 );
+	printf( "Reference Book [Size]: %0.4f GB\n", (double)((refSizeRdc * 512) + (refSizeRdc * 30)) / 8 / 1024 / 1024 / 1024 );
 	printf( "Elapsed Time: %lf\n", elapsedTimeKmc );
 	printf( "----------------------------------------------------------------\n" );
 	
