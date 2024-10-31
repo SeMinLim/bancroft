@@ -223,7 +223,7 @@ void compressor( const uint64_t stride ) {
 							     make_pair(encSubseq[6], encSubseq[7])))))))));
 				// Compare the current index to the previous one
 				if ( seqSizeCmpP != 0 ) {
-					if ( index[seqSizeCmpP] == (index[seqSizeCmpP - 1] + 1) ) {
+					if ( index[seqSizeCmpP] == (index[seqSizeCmpP - 1] + KMERLENGTH) ) {
 						seqSizeCmpI ++;
 					}
 				}	
@@ -283,7 +283,7 @@ int main( int argc, char **argv ) {
 		printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
 		printf( "The Compressed File Size: %0.4f MB\n", 
 		     	(double)(refCompN + refCompP + seqSizeRmnd) / 8 / 1024 / 1024 );
-		printf( "Sequential Percentage   : %0.4f\n", ((double)seqSizeCmpI / (double)seqSizeCmpP) * 100.00 );
+		printf( "Sequential Percentage   : %0.4f\n", (double)((double)seqSizeCmpI / (double)seqSizeCmpP) * (double)100.00 );
 		printf( "Elapsed Time: %lf\n", elapsedTime );
 	}
 
