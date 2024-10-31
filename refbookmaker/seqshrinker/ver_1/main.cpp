@@ -105,7 +105,6 @@ void seqShrinker( void ) {
 		sequenceRdc += block;
 	}
 	// Terminate
-	printf( "----------------------------------------------------------------\n" );
 	printf( "[STEP 2] The Reduced Sequence Length : %lu\n", sequenceRdc.size() );
 	printf( "[STEP 2] Reducing sequence is done!\n" );
 	printf( "----------------------------------------------------------------\n" );
@@ -129,7 +128,6 @@ void kmc( char *filename ) {
 		} else refSizeOrg ++;
 		start += 1;
 		// Check the progress
-		printf( "-----------------------------------------------------------------\n" );
 		if ( refSizeOrg % 1000000 == 0 ) {
 			printf( "[STEP 3] Generating 2-bit encoded k-mer table...[%lu]\n", refSizeOrg );
 			fflush( stdout );
@@ -144,7 +142,6 @@ void kmc( char *filename ) {
 	       pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
 	       pair<uint32_t, uint32_t>>> reference_vector(reference.begin(), reference.end());
 	sort(reference_vector.begin(), reference_vector.end(), descendingOrder);
-	printf( "----------------------------------------------------------------\n" );
 	printf( "[STEP 4] Sorting the k-mers through decending order is done!\n" );
 	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
@@ -166,7 +163,6 @@ void kmc( char *filename ) {
 		}
 	}
 	f_data_result.close();
-	printf( "----------------------------------------------------------------\n" );
 	printf( "[STEP 5] Writing the k-mers as binary is done\n" );
 	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
@@ -189,7 +185,6 @@ int main() {
 	double processFinishKmc = timeChecker();
 	double elapsedTimeKmc = processFinishKmc - processStartKmc;
 	
-	printf( "----------------------------------------------------------------\n" );
 	printf( "KMC RESULT\n" );
 	printf( "KMER [Total]: %ld\n", seqSizeOrg );
 	printf( "KMER [Count]: %ld\n", refSizeOrg );
