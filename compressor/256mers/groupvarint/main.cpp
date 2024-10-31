@@ -143,7 +143,9 @@ void seqReader( char *filename ) {
 	}
 	// Terminate
 	f_data_sequences.close();
+	printf( "---------------------------------------------------------------------\n" );
 	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
+	printf( "---------------------------------------------------------------------\n" );
 	fflush( stdout );
 }
 // Reference File Reader
@@ -206,6 +208,8 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 }
 // Compressor
 void compressor( const uint64_t stride ) {
+	printf( "---------------------------------------------------------------------\n" );
+	fflush( stdout );
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
@@ -238,9 +242,13 @@ void compressor( const uint64_t stride ) {
 		uint64_t remainder = sequences[seqIdx].size() - start;
 		if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
 		// Check the progress
-		printf( "Compressing #%lu Sequences is Done!\n", seqIdx );
+		printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
 		fflush( stdout );
 	}
+	// Terminate
+	printf( "[STEP 3] Compressing the sequences is done!\n" );
+	printf( "---------------------------------------------------------------------\n" );
+	fflush( stdout );
 }
 
 
@@ -256,28 +264,27 @@ int main( int argc, char **argv ) {
 
 	// Compression
 	for ( uint64_t stride = 1; stride < 512; stride = stride * 2 ) {
+		// Variable initialization
 		seqSizeCmpN = 0;
 		seqSizeCmpI = 0;
 		seqSizeCmpP = 0;
 		seqSizeRmnd = 0;
-		
+		// Compress
 		double processStart = timeChecker();
 		compressor( stride );
 		double processFinish = timeChecker();
 		double elapsedTime = processFinish - processStart;
-
+		// Results
 		uint64_t refCompN = (2 + (stride * 2)) * seqSizeCmpN;
 		uint64_t refCompP = (2 * seqSizeCmpP) + (32 * (seqSizeCmpP - seqSizeCmpI));
-		// Results
-		printf( "--------------------------------------------\n" );
 		printf( "REFERENCE\n" );
 		printf( "The Length of K-Mer: %lu\n", KMERLENGTH );
 		printf( "The Number of K-Mer: %lu\n", refSizeUsd );
-		printf( "--------------------------------------------\n" );
+		printf( "---------------------------------------------------------------------\n" );
 		printf( "SEQUENCE\n" );
 		printf( "The Number of Base Pair : %lu\n", seqSizeOrg );
 		printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024 / 1024 / 4 );
-		printf( "--------------------------------------------\n" );
+		printf( "---------------------------------------------------------------------\n" );
 		printf( "COMPRESSION RESULT\n" );
 		printf( "Stride                  : %lu\n", stride );
 		printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
@@ -285,6 +292,7 @@ int main( int argc, char **argv ) {
 		     	(double)(refCompN + refCompP + seqSizeRmnd) / 8 / 1024 / 1024 );
 		printf( "Sequential Percentage   : %0.4f\n", (double)((double)seqSizeCmpI / (double)seqSizeCmpP) * (double)100.00 );
 		printf( "Elapsed Time: %lf\n", elapsedTime );
+		printf( "--------------------------------------------\n" );
 	}
 
 	return 0;
