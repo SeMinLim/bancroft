@@ -174,6 +174,7 @@ void refReader( char *filename ) {
 	// Terminate
 	f_data_reference.close();
 	printf( "[STEP 2] Reading reference is done!\n" );
+	printf( "---------------------------------------------------------------------\n" );
 	fflush( stdout );
 }
 // 2-bit Encoder
@@ -208,8 +209,6 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 }
 // Compressor
 void compressor( const uint64_t stride ) {
-	printf( "---------------------------------------------------------------------\n" );
-	fflush( stdout );
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
@@ -292,7 +291,7 @@ int main( int argc, char **argv ) {
 		     	(double)(refCompN + refCompP + seqSizeRmnd) / 8 / 1024 / 1024 );
 		printf( "Sequential Percentage   : %0.4f\n", (double)((double)seqSizeCmpI / (double)seqSizeCmpP) * (double)100.00 );
 		printf( "Elapsed Time: %lf\n", elapsedTime );
-		printf( "--------------------------------------------\n" );
+		printf( "---------------------------------------------------------------------\n" );
 	}
 
 	return 0;
