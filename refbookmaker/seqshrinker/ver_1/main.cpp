@@ -112,6 +112,7 @@ void seqShrinker( void ) {
 }
 // KMC
 void kmc( char *filename ) {
+	// Run KMC
 	uint64_t start = 0;
 	while ( start <= sequenceRdc.size() - KMERLENGTH ) {
 		string subseq = sequenceRdc.substr(start, KMERLENGTH);
