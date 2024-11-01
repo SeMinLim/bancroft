@@ -19,13 +19,15 @@ using namespace std;
 
 
 vector<string> sequences;
-map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t> reference;
+map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
+    uint32_t> reference;
 
 
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmpN = 0;
 uint64_t seqSizeCmpP = 0;
 uint64_t seqSizeRmnd = 0;
+
 
 // Reference: hg19From2
 //uint64_t refSizeOrg = 10976427;
@@ -51,18 +53,12 @@ uint64_t seqSizeRmnd = 0;
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
-uint64_t refSizeUsd = 1968745020;
+//uint64_t refSizeUsd = 1968745020;
 // Reference: hg19From1 [Cuckoo Hash]
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2147483648;
-// Reference: hg19Shrinked4KB
-//uint64_t refSizeOrg = 1428002113;
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1428002113;
 // Reference: hg19+hg38
 //uint64_t refSizeOrg = 2836860451;
 //uint64_t refSizeUsd = 268435456;
@@ -119,17 +115,17 @@ uint64_t refSizeUsd = 1968745020;
 //uint64_t refSizeUsd = 2147483648;
 
 
+//// Required Functions
 // Time Checker
 static inline double timeChecker( void ) {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return (double)(tv.tv_sec) + (double)(tv.tv_usec) / 1000000;
 }
-
-// File Readers
+// Assembled Sequence File Reader
 void seqReader( char *filename ) {
 	string seqLine;
-
+	// Read
 	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
@@ -137,9 +133,14 @@ void seqReader( char *filename ) {
 			seqSizeOrg += seqLine.size();
 		}
 	}
-
+	// Terminate
 	f_data_sequences.close();
+	printf( "---------------------------------------------------------------------\n" );
+	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
+	printf( "---------------------------------------------------------------------\n" );
+	fflush( stdout );
 }
+// Reference File Reader
 void refReader( char *filename ) {
 	ifstream f_data_reference(filename, ios::binary);
 	for ( uint64_t i = 0; i < refSizeUsd; i ++ ) {
@@ -158,15 +159,17 @@ void refReader( char *filename ) {
 		}
 		// Check the progress
 		if ( i % 1000000 == 0 ) {
-			printf( "Reference: %lu\n", i );
+			printf( "[STEP 2] Reading reference is processing...[%lu/%lu]\n", i, refSizeUsd );
 			fflush( stdout );
 		}
 	}
-
+	// Terminate
 	f_data_reference.close();
+	printf( "[STEP 2] Reading reference is done!\n" );
+	printf( "---------------------------------------------------------------------\n" );
+	fflush( stdout );
 }
-
-// Encoder & Decoder
+// 2-bit Encoder
 void encoder( string seqLine, uint64_t *encKmer ) {
 	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		encKmer[i] = 0;
@@ -183,6 +186,7 @@ void encoder( string seqLine, uint64_t *encKmer ) {
 		}
 	}
 }
+// 2-bit Decoder
 void decoder( const uint64_t *encKmer, string &seqLine ) {
 	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		for ( uint64_t j = 0; j < ENCKMERBUFUNIT; j ++ ) {
@@ -195,18 +199,15 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 		}
 	}
 }
-
 // Compressor
 void compressor( const uint64_t stride ) {
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
-
 			// Encode first
 			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
 			encoder(subseq, encSubseq);
-
 			// Check possible to compress
 			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
@@ -221,8 +222,8 @@ void compressor( const uint64_t stride ) {
 		// Handle remainder
 		uint64_t remainder = sequences[seqIdx].size() - start;
 		if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
-
-		printf( "Compressing #%lu Sequences is Done!\n", seqIdx );
+		// Check the progress
+		printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
 		fflush( stdout );
 	}
 }
@@ -230,7 +231,7 @@ void compressor( const uint64_t stride ) {
 
 int main( int argc, char **argv ) {
 	char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	char *filenameR = "/home/jovyan/hg19Reference256MersFrom11878MJSHash.bin";
+	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
@@ -253,15 +254,14 @@ int main( int argc, char **argv ) {
 		double elapsedTime = processFinish - processStart;
 
 		// Results
-		printf( "--------------------------------------------\n" );
 		printf( "REFERENCE\n" );
 		printf( "The Length of K-Mer: %lu\n", KMERLENGTH );
 		printf( "The Number of K-Mer: %lu\n", refSizeUsd );
-		printf( "--------------------------------------------\n" );
+		printf( "---------------------------------------------------------------------\n" );
 		printf( "SEQUENCE\n" );
 		printf( "The Number of Base Pair : %lu\n", seqSizeOrg );
 		printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024 / 1024 / 4 );
-		printf( "--------------------------------------------\n" );
+		printf( "---------------------------------------------------------------------\n" );
 		printf( "COMPRESSION RESULT\n" );
 		printf( "Stride                  : %lu\n", stride );
 		printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
