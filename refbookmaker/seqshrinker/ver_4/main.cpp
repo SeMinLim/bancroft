@@ -14,10 +14,10 @@ using namespace std;
 
 
 #define KMERLENGTH 256
-#define GROUPUNIT 16384
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 8
 #define BINARYRWUNIT 8
+#define BLOCKLENGTH 16384
 
 
 uint64_t seqSizeOrg = 0;
@@ -91,11 +91,11 @@ void seqReader( char *filename ) {
 	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
-			uint64_t numGroups = seqLine.size() / GROUPUNIT;
+			uint64_t numGroups = seqLine.size() / BLOCKLENGTH;
 			if ( numGroups > 0 ) {
 				for ( uint64_t idx = 0; idx < numGroups; idx ++ ) {
-					uint64_t start = GROUPUNIT * idx;
-					string subseq = seqLine.substr(start, GROUPUNIT);
+					uint64_t start = BLOCKLENGTH * idx;
+					string subseq = seqLine.substr(start, BLOCKLENGTH);
 					sequences.push_back(subseq);
 				}
 			}
@@ -104,7 +104,9 @@ void seqReader( char *filename ) {
 	}
 	// Terminate
 	f_data_sequences.close();
+	printf( "----------------------------------------------------------------\n" );
 	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
+	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
 }
 // Pre-Made Reference File Reader
@@ -133,6 +135,7 @@ void refReader( char *filename ) {
 	// Terminate
 	f_data_reference.close();
 	printf( "[STEP 2] Reading pre-made reference file is done!\n" );
+	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
 }
 // Group Selector [4KB Unit]
@@ -169,10 +172,12 @@ void groupSelector( void ) {
 		}
 	}
 	printf( "[STEP 3] Counting occurrence is done!\n" );
+	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
 	// Do sorting by descending order
 	sort(groups.begin(), groups.end(), descendingOrder_1);
 	printf( "[STEP 4] Sorting the groups is done!\n" );
+	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
 	// Delete the primary reference
 	reference.clear();
@@ -211,6 +216,7 @@ void kmc( char *filename ) {
 		index += remainder;
 	}
 	printf( "[STEP 5] Generating 2-bit encoded k-mer table is done!\n" );
+	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
 	// Do sorting
 	vector<pair<
@@ -219,6 +225,7 @@ void kmc( char *filename ) {
 	       pair<uint32_t, uint32_t>>> reference_vector(reference_final.begin(), reference_final.end());
 	sort(reference_vector.begin(), reference_vector.end(), descendingOrder_2);
 	printf( "[STEP 6] Sorting the k-mers through decending order is done!\n" );
+	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
 	// Write the reference as binary file
 	ofstream f_data_result(filename, ios::binary);
@@ -239,6 +246,7 @@ void kmc( char *filename ) {
 	}
 	f_data_result.close();
 	printf( "[STEP 7] Writing the k-mers as binary is done\n" );
+	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
 }
 
@@ -246,7 +254,7 @@ void kmc( char *filename ) {
 int main() {
 	char *filenameSeq = "/mnt/ephemeral/hg19.fasta";
 	char *filenameRef = "/mnt/ephemeral/hg19Reference256MersFrom1OccurIncluded.bin";
-	char *filenameOut = "/home/jovyan/hg19Reference256Mers4KBUnit.bin";
+	char *filenameOut = "/home/jovyan/hg19Reference256MersFrom1256MBVer4.bin";
 	
 	// Read sequence file
 	seqReader( filenameSeq );
@@ -263,15 +271,13 @@ int main() {
 	double processFinishKmc = timeChecker();
 	double elapsedTimeKmc = processFinishKmc - processStartKmc;
 	
-	printf( "--------------------------------------------\n" );
 	printf( "KMC RESULT\n" );
 	printf( "KMER [Total]: %ld\n", seqSizeOrgNew );
 	printf( "KMER [Count]: %ld\n", refSizeOrgNew );
-	printf( "KMER [Percentage]: %0.8f\n", (double)(refSizeOrgNew / seqSizeOrgNew) * (double)100.00 );
+	printf( "KMER [Percentage]: %0.8f\n", ((double)refSizeOrgNew / (double)seqSizeOrgNew) * (double)100.00 );
 	printf( "Reference Book [Size]: %0.4f GB\n", (double)((refSizeOrgNew * 512) + (refSizeOrgNew * 30)) / 8 / 1024 / 1024 / 1024 );
 	printf( "Elapsed Time: %lf\n", elapsedTimeKmc );
-	printf( "--------------------------------------------\n" );
-	
+	printf( "----------------------------------------------------------------\n" );	
 	
 	return 0;
 }
