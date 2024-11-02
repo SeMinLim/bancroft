@@ -25,7 +25,7 @@ uint64_t seqSizeRdc = 1073741824;
 uint64_t refSizeRdc = 0;
 
 
-string sequenceOrg;
+vector<string> sequenceOrg;
 string sequenceRdc;
 map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
     pair<uint32_t, uint32_t>> reference;
@@ -84,14 +84,13 @@ void seqReader( char *filename ) {
 	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
-			sequenceOrg += seqLine;
+			sequenceOrg.push_back(seqLine);
 			seqSizeOrg += seqLine.size();
 		}
 	}
 	// Terminate
 	f_data_sequences.close();
 	printf( "----------------------------------------------------------------\n" );
-	printf( "[STEP 1] The Original Sequence Length: %lu\n", sequenceOrg.size() );
 	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
 	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
@@ -99,7 +98,18 @@ void seqReader( char *filename ) {
 // Sequence Shrinker
 void seqShrinker( void ) {
 	// Set & Store the block
-	sequenceRdc = sequenceOrg.substr(0, BLOCKLENGTH);
+	for ( uint64_t seqIdx = 0; seqIdx < sequenceOrg.size(); seqIdx ++ ) {
+		uint64_t half = sequenceOrg[seqIdx].size() / 2;
+		uint64_t newSize = sequenceRdc.size() + half;
+		if ( newSize > BLOCKLENGTH ) {
+			string subseq = sequenceOrg[seqIdx].substr(0, (BLOCKLENGTH - sequenceRdc.size()));
+			sequenceRdc += subseq;
+			break;
+		} else {
+			string subseq = sequenceOrg[seqIdx].substr(0, half);
+			sequenceRdc += subseq;
+		}
+	}
 	// Terminate
 	printf( "[STEP 2] The Reduced Sequence Length : %lu\n", sequenceRdc.size() );
 	printf( "[STEP 2] Reducing sequence is done!\n" );
@@ -168,7 +178,7 @@ void kmc( char *filename ) {
 
 int main() {
 	char *filenameIn = "/mnt/ephemeral/hg19.fasta";
-	char *filenameOut = "/mnt/ephemeral/hg19Reference256MersFrom14KBVer5.bin";
+	char *filenameOut = "/mnt/ephemeral/hg19Reference256MersFrom14KBVer6.bin";
 	
 	// Read sequence file
 	seqReader( filenameIn );
