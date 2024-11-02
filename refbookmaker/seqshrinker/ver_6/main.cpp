@@ -178,7 +178,7 @@ void kmc( char *filename ) {
 
 int main() {
 	char *filenameIn = "/mnt/ephemeral/hg19.fasta";
-	char *filenameOut = "/mnt/ephemeral/hg19Reference256MersFrom14KBVer6.bin";
+	char *filenameOut = "/mnt/ephemeral/hg19Reference256MersFrom1256MBVer6.bin";
 	
 	// Read sequence file
 	seqReader( filenameIn );
