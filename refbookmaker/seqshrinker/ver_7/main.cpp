@@ -27,14 +27,18 @@ vector<uint32_t> reference_index;
 map<uint32_t, 
     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>> 
     reference_kmer;
+// <Index, 0>
+map<uint32_t, uint32_t> 
+    reference_final_index;
 // <Index, K-Mer>
 map<uint32_t, 
     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>> 
-    reference_final;
+    reference_final_kmer;
 
 
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeRdc = 0;
+uint64_t seqSizeAln = 0;
 uint64_t refSizeOrg = 2849207900;
 uint64_t refSizeUsd = 2849207900;
 
@@ -141,82 +145,82 @@ void varTaker( uint64_t *encKmer, uint32_t index ) {
 }
 // Sequence Shrinker by De Bruijn
 void seqShrinker( char *filename ) {
-	// Reduce the sequence
-	string previous;
-	previous.reserve(KMERLENGTH - 1);
-	while ( seqSizeRdc < BLOCKLENGTH ) {
+	// Align the indices first
+	while ( seqSizeAln < BLOCKLENGTH ) {
 		uint32_t start = 0;
 		//// Phase 1
-		// Step 1. Pick the most frequently occurred k-mer as a start point
+		// Pick the most frequently occurred k-mer as a start point
 		for ( uint64_t cnt = 0; cnt < reference_index.size(); ) {
-			if ( reference_final.find(reference_index[cnt]) != reference_final.end() ) {
+			if ( reference_final_index.find(reference_index[cnt]) != reference_final_index.end() ) {
 				reference_index.erase(reference_index.begin() + cnt);
 			} else {
 				start = reference_index[cnt];
+				reference_final_index.insert(make_pair(start, 0));
 				reference_index.erase(reference_index.begin() + cnt);
+				seqSizeAln ++;
 				break;
 			}
 		}
-		// Step 2. Update the length of the new sequence
-		if ( seqSizeRdc == 0 ) {
-			seqSizeRdc += 256;
-		} else {
-			if ( previous.compare(sequence.substr(start, KMERLENGTH - 1)) == 0 ) {
+		// Check the progress
+		if ( seqSizeAln % 1000000 == 0 ) {
+			printf( "[STEP 3] Reducing the sequences is processing...[%lu/%lu]\n", seqSizeAln, BLOCKLENGTH );
+			fflush( stdout );
+		}
+		// Decide to terminate or not
+		if ( seqSizeAln >= BLOCKLENGTH ) break;
+		//// Phase 2
+		// Try to find the right next index 
+		while ( true ) {
+			if ( reference_kmer.find(start + 1) != reference_kmer.end() ) {
+				if ( reference_final_index.insert(make_pair(start + 1, 0)).second == false ) {
+					break;
+				}
+				// Check the progress
+				if ( seqSizeAln % 1000000 == 0 ) {
+					printf( "[STEP 3] Reducing the sequences is processing...[%lu/%lu]\n", seqSizeAln, BLOCKLENGTH);
+					fflush( stdout );
+				}
+				// Decide to terminate or not
+				if ( ++seqSizeAln >= BLOCKLENGTH ) break;
+			} else break;
+		}
+	}
+	// Make the final reference based on the alignment
+	uint32_t previous = 0;
+	bool init = true;
+	for ( auto iter = reference_final_index.begin(); iter != reference_final_index.end(); ++ iter ) {
+		// About sequence length
+		if ( !init ) {
+			if ( iter->first == (previous + 1) ) {
 				seqSizeRdc += 1;
 			} else {
-				seqSizeRdc += 256;
+				string prev = sequence.substr(previous + 1, KMERLENGTH - 1);
+				string curr = sequence.substr(iter->first, KMERLENGTH - 1);
+				if ( prev.compare(curr) == 0 ) seqSizeRdc += 1;
+				else seqSizeRdc += 256;
 			}
+		} else {
+			seqSizeRdc += 256;
+			init = false;
 		}
-		// Step 3. Update the new reference
-		uint64_t encKmer_1[ENCKMERBUFSIZE] = {0, };
-		varTaker(encKmer_1, start);
-		if ( reference_final.insert(make_pair(start, 
-					    make_pair(encKmer_1[0], make_pair(encKmer_1[1], 
-					    make_pair(encKmer_1[2], make_pair(encKmer_1[3], 
-					    make_pair(encKmer_1[4], make_pair(encKmer_1[5], 
-			      		    make_pair(encKmer_1[6], encKmer_1[7]))))))))).second == false ) {
+		// About reference
+		uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
+		varTaker(encKmer, iter->first);
+		if ( reference_final_kmer.insert(make_pair(iter->first,
+					         make_pair(encKmer[0], make_pair(encKmer[1],
+					    	 make_pair(encKmer[2], make_pair(encKmer[3],
+					    	 make_pair(encKmer[4], make_pair(encKmer[5],
+			      		    	 make_pair(encKmer[6], encKmer[7]))))))))).second == false ) {
 			printf( "There's a problem on the system...\n" );
 			fflush( stdout );
 			exit(1);
 		}
-		// Step 4. Check the progress
-		if ( seqSizeRdc % 1000000 == 0 ) {
-			printf( "[STEP 3] Reducing the sequences is processing...[%lu/%lu]\n", seqSizeRdc, BLOCKLENGTH );
-			fflush( stdout );
-		}
-		// Step 5. Decide to terminate or not
+		// Finalization
+		previous = iter->first;
 		if ( seqSizeRdc >= BLOCKLENGTH ) break;
-		//// Phase 2
-		// Step 1. Try to find the right next index 
-		while ( true ) {
-			if ( reference_kmer.find(start + 1) != reference_kmer.end() ) {
-				// Update the new reference
-				uint64_t encKmer_2[ENCKMERBUFSIZE] = {0, };
-				varTaker(encKmer_2, ++start);
-				if ( reference_final.insert(make_pair(start, 
-							    make_pair(encKmer_2[0], make_pair(encKmer_2[1], 
-							    make_pair(encKmer_2[2], make_pair(encKmer_2[3], 
-							    make_pair(encKmer_2[4], make_pair(encKmer_2[5], 
-					      		    make_pair(encKmer_2[6], encKmer_2[7]))))))))).second == false ) {
-					printf( "There's a problem on the system...\n" );
-					fflush( stdout );
-					exit(1);
-				}
-				// Check the progress
-				if ( seqSizeRdc % 1000000 == 0 ) {
-					printf( "[STEP 3] Reducing the sequences is processing...[%lu/%lu]\n", seqSizeRdc, BLOCKLENGTH);
-					fflush( stdout );
-				}
-				// Decide to terminate or not
-				if ( ++seqSizeRdc >= BLOCKLENGTH ) break;
-			} else break;
-		}
-		// Step 2. Store the current kmer string
-		previous = sequence.substr(start + 1, KMERLENGTH - 1);
 	}
-	reference_kmer.clear();
 	printf( "[STEP 3] The Length of New Sequence : %lu\n", seqSizeRdc );
-	printf( "[STEP 3] The Number of New Reference: %lu\n", reference_final.size() );
+	printf( "[STEP 3] The Number of New Reference: %lu\n", reference_final_kmer.size() );
 	printf( "[STEP 3] Reducing the sequences is done!\n" );
 	printf( "---------------------------------------------------------------------\n" );
 	fflush( stdout );
@@ -224,21 +228,21 @@ void seqShrinker( char *filename ) {
 	vector<pair<uint32_t,
 	       pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t,
 	       pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>>> 
-	       reference_vector(reference_final.begin(), reference_final.end());
+	       reference_vector(reference_final_kmer.begin(), reference_final_kmer.end());
 	ofstream f_data_result(filename, ios::binary);
 	for ( uint64_t i = 0; i < reference_vector.size(); i ++ ) {
-		uint64_t encKmer_3[ENCKMERBUFSIZE + 1] = {0, };
-		encKmer_3[0] = reference_vector[i].second.first;
-		encKmer_3[1] = reference_vector[i].second.second.first;
-		encKmer_3[2] = reference_vector[i].second.second.second.first;
-		encKmer_3[3] = reference_vector[i].second.second.second.second.first;
-		encKmer_3[4] = reference_vector[i].second.second.second.second.second.first;
-		encKmer_3[5] = reference_vector[i].second.second.second.second.second.second.first;
-		encKmer_3[6] = reference_vector[i].second.second.second.second.second.second.second.first;
-		encKmer_3[7] = reference_vector[i].second.second.second.second.second.second.second.second;
-		encKmer_3[8] = (uint64_t)reference_vector[i].first;
+		uint64_t encKmer[ENCKMERBUFSIZE + 1] = {0, };
+		encKmer[0] = reference_vector[i].second.first;
+		encKmer[1] = reference_vector[i].second.second.first;
+		encKmer[2] = reference_vector[i].second.second.second.first;
+		encKmer[3] = reference_vector[i].second.second.second.second.first;
+		encKmer[4] = reference_vector[i].second.second.second.second.second.first;
+		encKmer[5] = reference_vector[i].second.second.second.second.second.second.first;
+		encKmer[6] = reference_vector[i].second.second.second.second.second.second.second.first;
+		encKmer[7] = reference_vector[i].second.second.second.second.second.second.second.second;
+		encKmer[8] = (uint64_t)reference_vector[i].first;
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
-			f_data_result.write(reinterpret_cast<char *>(&encKmer_3[j]), BINARYRWUNIT);
+			f_data_result.write(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
 	}
 	f_data_result.close();
