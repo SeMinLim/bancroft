@@ -22,7 +22,7 @@ using namespace std;
 // Sequence
 string sequence;
 // Occurrence-Ordered Index
-vector<uint32_t> reference_index;
+map<uint32_t, uint32_t> reference_index;
 // <Index, K-Mer>
 map<uint32_t, 
     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>> 
@@ -78,8 +78,12 @@ void refReader( char *filename ) {
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
-		// [1st] Insert index to the occurrence-ordered vector
-		reference_index.push_back((uint32_t)encKmer[8]);
+		// [1st] Insert index to the occurrence-ordered map
+		if ( reference_index.insert(make_pair((uint32_t)i, encKmer[8])).second == false ) {
+			printf( "There's a problem on reference code book...\n" );
+			fflush( stdout );
+			exit(1);
+		}
 		// [2nd] Insert index and k-mer to map<index, k-mer>
 		if ( reference_kmer.insert(make_pair((uint32_t)encKmer[8], 
 				      make_pair(encKmer[0], make_pair(encKmer[1], 
@@ -150,21 +154,18 @@ void seqShrinker( char *filename ) {
 		uint32_t start = 0;
 		//// Phase 1
 		// Pick the most frequently occurred k-mer as a start point
-		for ( uint64_t cnt = 0; cnt < reference_index.size(); ) {
-			if ( reference_final_index.find(reference_index[cnt]) != reference_final_index.end() ) {
-				reference_index.erase(reference_index.begin() + cnt);
-			} else {
-				start = reference_index[cnt];
+		for ( auto iter = reference_index.begin(); iter != reference_index.end(); ++ iter ) {
+			if ( reference_final_index.find(iter->second) == reference_final_index.end() ) {
+				start = iter->second;
 				reference_final_index.insert(make_pair(start, 0));
-				reference_index.erase(reference_index.begin() + cnt);
+				// Check the progress
+				if ( seqSizeAln % 1000 == 0 ) {
+					printf( "[STEP 3] Reducing the sequence is processing...[%lu/%lu]\n", seqSizeAln, BLOCKLENGTH );
+					fflush( stdout );
+				}
 				seqSizeAln ++;
 				break;
 			}
-		}
-		// Check the progress
-		if ( seqSizeAln % 1000000 == 0 ) {
-			printf( "[STEP 3] Reducing the sequences is processing...[%lu/%lu]\n", seqSizeAln, BLOCKLENGTH );
-			fflush( stdout );
 		}
 		// Decide to terminate or not
 		if ( seqSizeAln >= BLOCKLENGTH ) break;
@@ -176,7 +177,7 @@ void seqShrinker( char *filename ) {
 					break;
 				}
 				// Check the progress
-				if ( seqSizeAln % 1000000 == 0 ) {
+				if ( seqSizeAln % 1000 == 0 ) {
 					printf( "[STEP 3] Reducing the sequences is processing...[%lu/%lu]\n", seqSizeAln, BLOCKLENGTH);
 					fflush( stdout );
 				}
