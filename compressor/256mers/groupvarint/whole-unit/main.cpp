@@ -235,15 +235,15 @@ void compressor( const uint64_t stride ) {
 			seqSizeCmpN ++;
 			start += stride;
 		}
+		// Check the progress
+		if ( start % 1000000 == 0 ) {
+			printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", start, sequence.size() );
+			fflush( stdout );
+		}
 	}
 	// Handle remainder
 	uint64_t remainder = sequence.size() - start;
 	if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
-	// Check the progress
-	if ( start % 1000000 == 0 ) {
-		printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", start, sequence.size() );
-		fflush( stdout );
-	}
 	// Terminate
 	printf( "[STEP 3] Compressing the sequences is done!\n" );
 	printf( "---------------------------------------------------------------------\n" );
