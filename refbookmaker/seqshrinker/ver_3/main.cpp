@@ -141,6 +141,7 @@ void refReader( char *filename ) {
 // Group Selector [4KB Unit]
 void groupSelector( void ) {
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
+		uint64_t flag = 0;
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
@@ -151,7 +152,7 @@ void groupSelector( void ) {
 			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 					    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
-				if ( start == 0 ) {
+				if ( flag == 0 ) {
 					groups.push_back(make_pair(seqIdx, reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], 
 								      			make_pair(encSubseq[2], make_pair(encSubseq[3], 
 								      			make_pair(encSubseq[4], make_pair(encSubseq[5],
@@ -162,9 +163,11 @@ void groupSelector( void ) {
 									      make_pair(encSubseq[4], make_pair(encSubseq[5], 
 									      make_pair(encSubseq[6], encSubseq[7]))))))));
 				}
+				flag = 1;
 			}
 			start += 1;
 		}
+		if ( flag == 0 ) groups.push_back(make_pair(seqIdx, 0));
 		// Check the progress
 		if ( seqIdx % 1000 == 0 ) {
 			printf( "[STEP 3] Couting occurrence is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
