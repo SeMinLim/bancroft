@@ -27,9 +27,9 @@ vector<uint32_t> reference_index;
 map<uint32_t, 
     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>> 
     reference_kmer;
-// <K-Mer, Index>
-map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
-    uint32_t> 
+// <Index, K-Mer>
+map<uint32_t, 
+    pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>> 
     reference_final;
 
 
@@ -60,6 +60,7 @@ void seqReader( char *filename ) {
 	// Terminate
 	f_data_sequences.close();
 	printf( "---------------------------------------------------------------------\n" );
+	printf( "[STEP 1] The Length of Sequence: %lu\n", sequence.size() );
 	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
 	printf( "---------------------------------------------------------------------\n" );
 	fflush( stdout );
@@ -73,10 +74,14 @@ void refReader( char *filename ) {
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
-		// Insert 256-mer and index to Map
-		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
-				      make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
-				      make_pair(encKmer[6], encKmer[7]))))))), (uint32_t)encKmer[8])).second == false ) {
+		// [1st] Insert index to the occurrence-ordered vector
+		reference_index.push_back((uint32_t)encKmer[8]);
+		// [2nd] Insert index and k-mer to map<index, k-mer>
+		if ( reference_kmer.insert(make_pair((uint32_t)encKmer[8], 
+				      make_pair(encKmer[0], make_pair(encKmer[1], 
+				      make_pair(encKmer[2], make_pair(encKmer[3], 
+				      make_pair(encKmer[4], make_pair(encKmer[5], 
+				      make_pair(encKmer[6], encKmer[7]))))))))).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);
@@ -123,53 +128,130 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 		}
 	}
 }
-// Compressor
-void compressor( const uint64_t stride ) {
-	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
-		uint64_t start = 0;
-		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
-			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
-			// Encode first
-			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
-			encoder(subseq, encSubseq);
-			// Check possible to compress
-			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-					    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
-				// Possible to compress, then put index to the vector first
-				index.push_back(reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-							     make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-							     make_pair(encSubseq[6], encSubseq[7])))))))));
-				// Compare the current index to the previous one
-				if ( seqSizeCmpP != 0 ) {
-					if ( index[seqSizeCmpP] == (index[seqSizeCmpP - 1] + KMERLENGTH) ) {
-						seqSizeCmpI ++;
-					}
-				}	
-				seqSizeCmpP ++;
-				start += KMERLENGTH;
+// Variable Taker
+void varTaker( uint64_t *encKmer, uint32_t index ) {
+	encKmer[0] = reference_kmer[index].first;
+	encKmer[1] = reference_kmer[index].second.first;
+	encKmer[2] = reference_kmer[index].second.second.first;
+	encKmer[3] = reference_kmer[index].second.second.second.first;
+	encKmer[4] = reference_kmer[index].second.second.second.second.first;
+	encKmer[5] = reference_kmer[index].second.second.second.second.second.first;
+	encKmer[6] = reference_kmer[index].second.second.second.second.second.second.first;
+	encKmer[7] = reference_kmer[index].second.second.second.second.second.second.second;
+}
+// Sequence Shrinker by De Bruijn
+void seqShrinker( char *filename ) {
+	// Reduce the sequence
+	string previous;
+	previous.reserve(KMERLENGTH - 1);
+	while ( seqSizeRdc < BLOCKLENGTH ) {
+		uint32_t start = 0;
+		//// Phase 1
+		// Step 1. Pick the most frequently occurred k-mer as a start point
+		for ( uint64_t cnt = 0; cnt < reference_index.size(); ) {
+			if ( reference_final.find(reference_index[cnt]) != reference_final.end() ) {
+				reference_index.erase(reference_index.begin() + cnt);
 			} else {
-				seqSizeCmpN ++;
-				start += stride;
+				start = reference_index[cnt];
+				reference_index.erase(reference_index.begin() + cnt);
+				break;
 			}
 		}
-		// Handle remainder
-		uint64_t remainder = sequences[seqIdx].size() - start;
-		if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
-		// Check the progress
-		printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
-		fflush( stdout );
+		// Step 2. Update the length of the new sequence
+		if ( seqSizeRdc == 0 ) {
+			seqSizeRdc += 256;
+		} else {
+			if ( previous.compare(sequence.substr(start, KMERLENGTH - 1)) == 0 ) {
+				seqSizeRdc += 1;
+			} else {
+				seqSizeRdc += 256;
+			}
+		}
+		// Step 3. Update the new reference
+		uint64_t encKmer_1[ENCKMERBUFSIZE] = {0, };
+		varTaker(encKmer_1, start);
+		if ( reference_final.insert(make_pair(start, 
+					    make_pair(encKmer_1[0], make_pair(encKmer_1[1], 
+					    make_pair(encKmer_1[2], make_pair(encKmer_1[3], 
+					    make_pair(encKmer_1[4], make_pair(encKmer_1[5], 
+			      		    make_pair(encKmer_1[6], encKmer_1[7]))))))))).second == false ) {
+			printf( "There's a problem on the system...\n" );
+			fflush( stdout );
+			exit(1);
+		}
+		// Step 4. Check the progress
+		if ( seqSizeRdc % 1000000 == 0 ) {
+			printf( "[STEP 3] Reducing the sequences is processing...[%lu/%lu]\n", seqSizeRdc, BLOCKLENGTH );
+			fflush( stdout );
+		}
+		// Step 5. Decide to terminate or not
+		if ( seqSizeRdc >= BLOCKLENGTH ) break;
+		//// Phase 2
+		// Step 1. Try to find the right next index 
+		while ( true ) {
+			if ( reference_kmer.find(start + 1) != reference_kmer.end() ) {
+				// Update the new reference
+				uint64_t encKmer_2[ENCKMERBUFSIZE] = {0, };
+				varTaker(encKmer_2, ++start);
+				if ( reference_final.insert(make_pair(start, 
+							    make_pair(encKmer_2[0], make_pair(encKmer_2[1], 
+							    make_pair(encKmer_2[2], make_pair(encKmer_2[3], 
+							    make_pair(encKmer_2[4], make_pair(encKmer_2[5], 
+					      		    make_pair(encKmer_2[6], encKmer_2[7]))))))))).second == false ) {
+					printf( "There's a problem on the system...\n" );
+					fflush( stdout );
+					exit(1);
+				}
+				// Check the progress
+				if ( seqSizeRdc % 1000000 == 0 ) {
+					printf( "[STEP 3] Reducing the sequences is processing...[%lu/%lu]\n", seqSizeRdc, BLOCKLENGTH);
+					fflush( stdout );
+				}
+				// Decide to terminate or not
+				if ( ++seqSizeRdc >= BLOCKLENGTH ) break;
+			} else break;
+		}
+		// Step 2. Store the current kmer string
+		previous = sequence.substr(start + 1, KMERLENGTH - 1);
 	}
-	// Terminate
-	printf( "[STEP 3] Compressing the sequences is done!\n" );
+	reference_kmer.clear();
+	printf( "[STEP 3] The Length of New Sequence : %lu\n", seqSizeRdc );
+	printf( "[STEP 3] The Number of New Reference: %lu\n", reference_final.size() );
+	printf( "[STEP 3] Reducing the sequences is done!\n" );
 	printf( "---------------------------------------------------------------------\n" );
+	fflush( stdout );
+	// Write the new reference as binary file
+	vector<pair<uint32_t,
+	       pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t,
+	       pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>>> 
+	       reference_vector(reference_final.begin(), reference_final.end());
+	ofstream f_data_result(filename, ios::binary);
+	for ( uint64_t i = 0; i < reference_vector.size(); i ++ ) {
+		uint64_t encKmer_3[ENCKMERBUFSIZE + 1] = {0, };
+		encKmer_3[0] = reference_vector[i].second.first;
+		encKmer_3[1] = reference_vector[i].second.second.first;
+		encKmer_3[2] = reference_vector[i].second.second.second.first;
+		encKmer_3[3] = reference_vector[i].second.second.second.second.first;
+		encKmer_3[4] = reference_vector[i].second.second.second.second.second.first;
+		encKmer_3[5] = reference_vector[i].second.second.second.second.second.second.first;
+		encKmer_3[6] = reference_vector[i].second.second.second.second.second.second.second.first;
+		encKmer_3[7] = reference_vector[i].second.second.second.second.second.second.second.second;
+		encKmer_3[8] = (uint64_t)reference_vector[i].first;
+		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
+			f_data_result.write(reinterpret_cast<char *>(&encKmer_3[j]), BINARYRWUNIT);
+		}
+	}
+	f_data_result.close();
+	printf( "[STEP 5] Writing the k-mers as binary is done\n" );
+	printf( "----------------------------------------------------------------\n" );
 	fflush( stdout );
 }
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/hg16.fasta";
+	char *filenameS = "/mnt/ephemeral/hg19.fasta";
 	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1IndexIncluded.bin";
+	char *filenameF = "/mnt/ephemeral/hg19Reference256MersFrom1256MBVer7.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
@@ -177,38 +259,7 @@ int main( int argc, char **argv ) {
 	// Read reference file
 	refReader( filenameR );
 
-	// Compression
-	for ( uint64_t stride = 1; stride < 512; stride = stride * 2 ) {
-		// Variable initialization
-		seqSizeCmpN = 0;
-		seqSizeCmpI = 0;
-		seqSizeCmpP = 0;
-		seqSizeRmnd = 0;
-		// Compress
-		double processStart = timeChecker();
-		compressor( stride );
-		double processFinish = timeChecker();
-		double elapsedTime = processFinish - processStart;
-		// Results
-		uint64_t refCompN = (2 + (stride * 2)) * seqSizeCmpN;
-		uint64_t refCompP = (2 * seqSizeCmpP) + (32 * (seqSizeCmpP - seqSizeCmpI));
-		printf( "REFERENCE\n" );
-		printf( "The Length of K-Mer: %lu\n", KMERLENGTH );
-		printf( "The Number of K-Mer: %lu\n", refSizeUsd );
-		printf( "---------------------------------------------------------------------\n" );
-		printf( "SEQUENCE\n" );
-		printf( "The Number of Base Pair : %lu\n", seqSizeOrg );
-		printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024 / 1024 / 4 );
-		printf( "---------------------------------------------------------------------\n" );
-		printf( "COMPRESSION RESULT\n" );
-		printf( "Stride                  : %lu\n", stride );
-		printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
-		printf( "The Compressed File Size: %0.4f MB\n", 
-		     	(double)(refCompN + refCompP + seqSizeRmnd) / 8 / 1024 / 1024 );
-		printf( "Sequential Percentage   : %0.4f\n", (double)((double)seqSizeCmpI / (double)seqSizeCmpP) * (double)100.00 );
-		printf( "Elapsed Time: %lf\n", elapsedTime );
-		printf( "---------------------------------------------------------------------\n" );
-	}
-
+	// Reduce the sequence
+	seqShrinker( filenameF );
 	return 0;
 }
