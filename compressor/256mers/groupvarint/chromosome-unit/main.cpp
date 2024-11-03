@@ -209,6 +209,8 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 }
 // Compressor
 void compressor( const uint64_t stride ) {
+	uint32_t prevIndex = 0;
+	uint32_t currIndex = 0;
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
@@ -220,16 +222,18 @@ void compressor( const uint64_t stride ) {
 			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 					    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
-				// Possible to compress, then put index to the vector first
-				index.push_back(reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-							     make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-							     make_pair(encSubseq[6], encSubseq[7])))))))));
-				// Compare the current index to the previous one
+				// Possible to compress, then store the current index
+				currIndex = reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
+							 make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
+							 make_pair(encSubseq[6], encSubseq[7]))))))));
+				// Compare the current index with the previous one
 				if ( seqSizeCmpP != 0 ) {
-					if ( index[seqSizeCmpP] == (index[seqSizeCmpP - 1] + KMERLENGTH) ) {
+					if ( currIndex == prevIndex + KMERLENGTH ) {
 						seqSizeCmpI ++;
 					}
-				}	
+				}
+				// Update the parameters
+				prevIndex = currIndex;
 				seqSizeCmpP ++;
 				start += KMERLENGTH;
 			} else {
