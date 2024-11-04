@@ -15,7 +15,8 @@ using namespace std;
 vector<uint64_t> length;
 
 
-uint64_t seqIdx = 0;
+uint64_t counter = 0;
+uint64_t sequences = 0;
 uint64_t totalLength = 0;
 
 
@@ -30,11 +31,17 @@ void fastaReader( char *filename ) {
 
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
-			length.push_back(seqLine.size());
-			printf( "Length[%lu]: %lu\n", seqIdx, seqLine.size() );
+			if ( counter == 0 ) length.push_back(seqLine.size());
+			else length.back() += seqLine.size();
 			totalLength += seqLine.size();
-			seqIdx ++;
+			counter ++;
 		} else {
+			if ( counter != 0 ) {
+				printf( "Length[%lu]: %lu\n", sequences, length[sequences] );
+				sequences ++;
+			}
+			counter = 0;
+			if ( sequences == 3 ) break;
 			printf( "%s\n", seqLine.c_str() );
 		}
 	}
@@ -47,7 +54,7 @@ void fastaReader( char *filename ) {
 
 
 int main( void ) {
-	char *filenameI = "/mnt/ssd0/semin/dna_compressor/data/sequences/hg19.fasta";
+	char *filenameI = "/mnt/ssd0/semin/bancroft/data/sequences/hg16.fasta";
 	
 	// Read assembled sequence file 
 	fastaReader( filenameI );
