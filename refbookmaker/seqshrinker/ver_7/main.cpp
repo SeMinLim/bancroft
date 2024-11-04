@@ -178,7 +178,7 @@ void seqShrinker( char *filename ) {
 				}
 				// Check the progress
 				if ( seqSizeAln % 1000 == 0 ) {
-					printf( "[STEP 3] Reducing the sequences is processing...[%lu/%lu]\n", seqSizeAln, BLOCKLENGTH);
+					printf( "[STEP 3] Reducing the sequence is processing...[%lu/%lu]\n", seqSizeAln, BLOCKLENGTH);
 					fflush( stdout );
 				}
 				// Decide to terminate or not
