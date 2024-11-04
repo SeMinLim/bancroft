@@ -17,11 +17,11 @@ using namespace std;
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 8
 #define BINARYRWUNIT 8
-#define BLOCKLENGTH 1073741824
+#define BLOCKLENGTH 2147483648
 
 
 uint64_t seqSizeOrg = 0;
-uint64_t seqSizeRdc = 1073741824;
+uint64_t seqSizeRdc = 2147483648;
 uint64_t refSizeRdc = 0;
 
 
@@ -168,7 +168,7 @@ void kmc( char *filename ) {
 
 int main() {
 	char *filenameIn = "/mnt/ephemeral/hg19.fasta";
-	char *filenameOut = "/mnt/ephemeral/hg19Reference256MersFrom1256MBVer5.bin";
+	char *filenameOut = "/mnt/ephemeral/hg19Reference256MersFrom1512MBVer5.bin";
 	
 	// Read sequence file
 	seqReader( filenameIn );
