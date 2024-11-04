@@ -16,10 +16,11 @@ using namespace std;
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 8
 #define BINARYRWUNIT 8
+#define CONDITION 1
+#define SEQSIZECDT 2147483648
 
 
 string sequence;
-vector<uint32_t> index;
 map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
 	 uint32_t> reference;
 
@@ -31,9 +32,6 @@ uint64_t seqSizeCmpP = 0;
 uint64_t seqSizeRmnd = 0;
 
 
-// Reference: hg19From2
-//uint64_t refSizeOrg = 10976427;
-//uint64_t refSizeUsd = 10976427;
 // Reference: hg19From1
 //uint64_t refSizeOrg = 2849207900;
 //uint64_t refSizeUsd = 268435456;
@@ -61,66 +59,6 @@ uint64_t refSizeUsd = 2849207900;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2147483648;
-// Reference: hg19Shrinked4KB
-//uint64_t refSizeOrg = 1428002113;
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1428002113;
-// Reference: hg19+hg38
-//uint64_t refSizeOrg = 2836860451;
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2147483648;
-//uint64_t refSizeUsd = 2836860451;
-// Reference: hg19+hg38 [32LSB]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1128110488;
-// Reference: hg19+hg38 [RS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2076244715;
-// Reference: hg19+hg38 [JS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1963010781;
-// Reference: hg19+hg38 [Cuckoo Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2147483648;
-// Reference: hg19hg38
-//uint64_t refSizeOrg = 2825518939;
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2147483648;
-//uint64_t refSizeUsd = 2825518939;
-// Reference: hg19hg38 [32LSB]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1127665898;
-// Reference: hg19hg38 [RS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2070382593;
-// Reference: hg19hg38 [JS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1957754995;
-// Reference: hg19+hg38 [Cuckoo Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2147483648;
 
 
 // Required Functions
@@ -139,11 +77,20 @@ void seqReader( char *filename ) {
 		if ( seqLine[0] != '>' ) {
 			sequence += seqLine;
 			seqSizeOrg += seqLine.size();
+			if ( CONDITION ) {
+				if ( sequence.size() > SEQSIZECDT ) break;
+			}
 		}
+	}
+	// [CONDITION] Erase
+	if ( CONDITION ) {
+		uint64_t amount = sequence.size() - (uint64_t)SEQSIZECDT;
+		sequence.erase(SEQSIZECDT, amount);
 	}
 	// Terminate
 	f_data_sequence.close();
 	printf( "---------------------------------------------------------------------\n" );
+	printf( "The Length of Sequence: %lu\n", sequence.size() );
 	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
 	printf( "---------------------------------------------------------------------\n" );
 	fflush( stdout );
@@ -209,6 +156,8 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 }
 // Compressor
 void compressor( const uint64_t stride ) {
+	uint32_t prevIndex = 0;
+	uint32_t currIndex = 0;
 	uint64_t start = 0;
 	while ( start <= sequence.size() - KMERLENGTH ) {
 		string subseq = sequence.substr(start, KMERLENGTH);
@@ -219,16 +168,18 @@ void compressor( const uint64_t stride ) {
 		if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 				    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 				    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
-			// Possible to compress, then put index to the vector first
-			index.push_back(reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-						     make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-						     make_pair(encSubseq[6], encSubseq[7])))))))));
+			// Possible to compress, then store the current index
+			currIndex = reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
+						 make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
+						 make_pair(encSubseq[6], encSubseq[7]))))))));
 			// Compare the current index to the previous one
 			if ( seqSizeCmpP != 0 ) {
-				if ( index[seqSizeCmpP] == (index[seqSizeCmpP - 1] + KMERLENGTH) ) {
+				if ( currIndex == prevIndex + KMERLENGTH ) {
 					seqSizeCmpI ++;
 				}
-			}	
+			}
+			// Update the parameters
+			prevIndex = currIndex;
 			seqSizeCmpP ++;
 			start += KMERLENGTH;
 		} else {
