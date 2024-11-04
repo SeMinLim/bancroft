@@ -134,7 +134,7 @@ void kmc( char *filename ) {
 		encKmer[0] = reference_vector[i].first.first;
 		encKmer[1] = reference_vector[i].first.second.first;
 		encKmer[2] = reference_vector[i].first.second.second.first;
-		encKmer[3] = reference_vector[i].first.second.second.second.first;
+		encKmer[3] = reference_vector[i].first.second.second.second;
 		encKmer[4] = (uint64_t)reference_vector[i].second.first;
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
 			f_data_result.write(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
