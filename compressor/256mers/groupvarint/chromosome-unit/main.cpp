@@ -30,9 +30,6 @@ uint64_t seqSizeCmpP = 0;
 uint64_t seqSizeRmnd = 0;
 
 
-// Reference: hg19From2
-//uint64_t refSizeOrg = 10976427;
-//uint64_t refSizeUsd = 10976427;
 // Reference: hg19From1
 //uint64_t refSizeOrg = 2849207900;
 //uint64_t refSizeUsd = 268435456;
@@ -56,66 +53,6 @@ uint64_t refSizeUsd = 2849207900;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 1968745020;
 // Reference: hg19From1 [Cuckoo Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2147483648;
-// Reference: hg19Shrinked4KB
-//uint64_t refSizeOrg = 1428002113;
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1428002113;
-// Reference: hg19+hg38
-//uint64_t refSizeOrg = 2836860451;
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2147483648;
-//uint64_t refSizeUsd = 2836860451;
-// Reference: hg19+hg38 [32LSB]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1128110488;
-// Reference: hg19+hg38 [RS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2076244715;
-// Reference: hg19+hg38 [JS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1963010781;
-// Reference: hg19+hg38 [Cuckoo Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2147483648;
-// Reference: hg19hg38
-//uint64_t refSizeOrg = 2825518939;
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2147483648;
-//uint64_t refSizeUsd = 2825518939;
-// Reference: hg19hg38 [32LSB]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1127665898;
-// Reference: hg19hg38 [RS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 2070382593;
-// Reference: hg19hg38 [JS Hash]
-//uint64_t refSizeUsd = 268435456;
-//uint64_t refSizeUsd = 536870912;
-//uint64_t refSizeUsd = 1073741824;
-//uint64_t refSizeUsd = 1957754995;
-// Reference: hg19+hg38 [Cuckoo Hash]
 //uint64_t refSizeUsd = 268435456;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
