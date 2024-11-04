@@ -19,7 +19,6 @@ using namespace std;
 
 
 vector<string> sequences;
-vector<uint32_t> index;
 map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
 	 uint32_t> reference;
 
