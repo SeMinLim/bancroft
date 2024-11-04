@@ -98,9 +98,9 @@ void seqReader( char *filename ) {
 }
 // Sequence Shrinker
 void seqShrinker( void ) {
-	for ( uint64_t cnt = 0; cnt < (seqSizeRdc / BLOCKLENGTH); cnt ++ ) {
+	for ( uint64_t cnt = 0; cnt < (seqSizeRdc / BLOCKLENGTH); cnt = cnt + 2 ) {
 		// Set the block
-		uint64_t start = cnt * (BLOCKLENGTH * 2);
+		uint64_t start = cnt * BLOCKLENGTH;
 		string block = sequenceOrg.substr(start, BLOCKLENGTH);
 		// Store the block to the new sequence
 		sequenceRdc += block;
@@ -173,7 +173,7 @@ void kmc( char *filename ) {
 
 int main() {
 	char *filenameIn = "/mnt/ephemeral/hg19.fasta";
-	char *filenameOut = "/mnt/ephemeral/hg19Reference256MersFrom14KBVer1.bin";
+	char *filenameOut = "/mnt/ephemeral/hg19Reference256MersFrom1256MBVer1.bin";
 	
 	// Read sequence file
 	seqReader( filenameIn );
