@@ -59,13 +59,15 @@ uint64_t seqSizeRmnd = 0;
 //uint64_t refSizeUsd = 536870912;
 //uint64_t refSizeUsd = 1073741824;
 //uint64_t refSizeUsd = 2147483648;
-// Reference: hg19From1 [4KB Unit]
+// Reference: hg19From1 [256MB]
 //uint64_t refSizeUsd = 1071129683;
 //uint64_t refSizeUsd = 1071144232;
 //uint64_t refSizeUsd = 1041892535;
 //uint64_t refSizeUsd = 1042075569;
 //uint64_t refSizeUsd = 1068841699;
-uint64_t refSizeUsd = 1068697053;
+//uint64_t refSizeUsd = 1068697053;
+// Reference: hg19From1 [512MB]
+uint64_t refSizeUsd = 2139387112;
 // Reference: hg19+hg38
 //uint64_t refSizeOrg = 2836860451;
 //uint64_t refSizeUsd = 268435456;
@@ -242,7 +244,7 @@ void compressor( const uint64_t stride ) {
 
 int main( int argc, char **argv ) {
 	char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1256MBVer6.bin";
+	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1512MBVer5.bin";
 
 	// Read sequence file
 	seqReader( filenameS );
@@ -253,7 +255,7 @@ int main( int argc, char **argv ) {
 	// Compression
 	for ( uint64_t stride = 1; stride < 512; stride = stride * 2 ) {
 		uint64_t refCompIndexN = 1 + stride * 2;
-		uint64_t refCompIndexP = 1 + 30;
+		uint64_t refCompIndexP = 1 + 31;
 
 		seqSizeCmpN = 0;
 		seqSizeCmpP = 0;
