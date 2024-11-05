@@ -16,7 +16,7 @@ using namespace std;
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 8
 #define BINARYRWUNIT 8
-#define CONDITION 1
+#define CONDITION 0
 #define SEQSIZECDT 2147483648
 
 
@@ -70,6 +70,7 @@ static inline double timeChecker( void ) {
 }
 // Sequence File Reader
 void seqReader( char *filename ) {
+	uint64_t cnt = 0;
 	string seqLine;
 	// Read
 	ifstream f_data_sequence(filename);
@@ -80,6 +81,8 @@ void seqReader( char *filename ) {
 			if ( CONDITION ) {
 				if ( sequence.size() > SEQSIZECDT ) break;
 			}
+			if ( cnt == 500 ) break;
+			cnt ++;
 		}
 	}
 	// [CONDITION] Erase
@@ -203,7 +206,7 @@ void compressor( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/hg002.fasta";
+	char *filenameS = "/mnt/ephemeral/hg002_rep2.fasta";
 	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
