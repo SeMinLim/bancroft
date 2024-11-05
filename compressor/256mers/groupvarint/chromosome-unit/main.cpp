@@ -76,7 +76,7 @@ void seqReader( char *filename ) {
 		if ( seqLine[0] != '>' ) {
 			sequences.push_back(seqLine);
 			seqSizeOrg += seqLine.size();
-			if ( cnt == 10 ) break;
+			if ( cnt == 500 ) break;
 			cnt ++;
 		}
 	}
@@ -184,8 +184,8 @@ void compressor( const uint64_t stride ) {
 		uint64_t remainder = sequences[seqIdx].size() - start;
 		if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
 		// Check the progress
-		printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
-		fflush( stdout );
+		//printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
+		//fflush( stdout );
 	}
 	// Terminate
 	printf( "[STEP 3] Compressing the sequences is done!\n" );
@@ -195,7 +195,7 @@ void compressor( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/hg002_rep2.fasta";
+	char *filenameS = "/mnt/ephemeral/hg002_rep1.fasta";
 	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
