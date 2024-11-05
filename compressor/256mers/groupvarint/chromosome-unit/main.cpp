@@ -68,6 +68,7 @@ static inline double timeChecker( void ) {
 }
 // Sequence File Reader
 void seqReader( char *filename ) {
+	uint64_t cnt = 0;
 	string seqLine;
 	// Read
 	ifstream f_data_sequences(filename);
@@ -75,6 +76,8 @@ void seqReader( char *filename ) {
 		if ( seqLine[0] != '>' ) {
 			sequences.push_back(seqLine);
 			seqSizeOrg += seqLine.size();
+			if ( cnt == 10 ) break;
+			cnt ++;
 		}
 	}
 	// Terminate
@@ -192,7 +195,7 @@ void compressor( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/hg16.fasta";
+	char *filenameS = "/mnt/ephemeral/hg002_rep2.fasta";
 	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
