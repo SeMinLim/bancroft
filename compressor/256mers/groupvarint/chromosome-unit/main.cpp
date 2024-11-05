@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include <map>
+#include <algorithm>
 using namespace std;
 
 
@@ -154,17 +155,22 @@ void compressor( const uint64_t stride ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
+			string subseqOrg = subseq;
+			reverse(subseq.begin(), subseq.end());
+			string subseqRev = subseq;
 			// Encode first
-			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
-			encoder(subseq, encSubseq);
+			uint64_t encSubseqOrg[ENCKMERBUFSIZE] = {0, };
+			uint64_t encSubseqRev[ENCKMERBUFSIZE] = {0, };
+			encoder(subseqOrg, encSubseqOrg);
+			encoder(subseqRev, encSubseqRev);
 			// Check possible to compress
-			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-					    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
+			if ( reference.find(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], make_pair(encSubseqOrg[2], 
+					    make_pair(encSubseqOrg[3], make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+					    make_pair(encSubseqOrg[6], encSubseqOrg[7])))))))) != reference.end() ) {
 				// Possible to compress, then store the current index
-				currIndex = reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-							 make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-							 make_pair(encSubseq[6], encSubseq[7]))))))));
+				currIndex = reference.at(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], make_pair(encSubseqOrg[2], 
+							 make_pair(encSubseqOrg[3], make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+							 make_pair(encSubseqOrg[6], encSubseqOrg[7]))))))));
 				// Compare the current index with the previous one
 				if ( seqSizeCmpP != 0 ) {
 					if ( currIndex == prevIndex + KMERLENGTH ) {
@@ -175,6 +181,24 @@ void compressor( const uint64_t stride ) {
 				prevIndex = currIndex;
 				seqSizeCmpP ++;
 				start += KMERLENGTH;
+			} else if ( reference.find(make_pair(encSubseqRev[0], make_pair(encSubseqRev[1], make_pair(encSubseqRev[2],
+						   make_pair(encSubseqRev[3], make_pair(encSubseqRev[4], make_pair(encSubseqRev[5], 
+						   make_pair(encSubseqRev[6], encSubseqRev[7])))))))) != reference.end() ) { 
+				// Possible to compress, then store the current index
+				currIndex = reference.at(make_pair(encSubseqRev[0], make_pair(encSubseqRev[1], make_pair(encSubseqRev[2], 
+							 make_pair(encSubseqRev[3], make_pair(encSubseqRev[4], make_pair(encSubseqRev[5], 
+							 make_pair(encSubseqRev[6], encSubseqRev[7]))))))));
+				// Compare the current index with the previous one
+				if ( seqSizeCmpP != 0 ) {
+					if ( currIndex == prevIndex + KMERLENGTH ) {
+						seqSizeCmpI ++;
+					}
+				}
+				// Update the parameters
+				prevIndex = currIndex;
+				seqSizeCmpP ++;
+				start += KMERLENGTH;
+
 			} else {
 				seqSizeCmpN ++;
 				start += stride;
