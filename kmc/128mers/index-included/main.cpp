@@ -161,7 +161,7 @@ int main() {
 	printf( "KMC RESULT\n" );
 	printf( "KMER [Total]: %ld\n", seqSizeOrg );
 	printf( "KMER [Count]: %ld\n", refSizeOrg );
-	printf( "KMER [Percentage]: %0.8f\n", (double)refSizeOrg / (double)seqSizeOrg * 100.00 );
+	printf( "KMER [Percentage]: %0.4f\n", (double)refSizeOrg / (double)seqSizeOrg * 100.00 );
 	printf( "Reference Book [Size]: %0.4f GB\n", 
 		(((double)refSizeOrg * 512.00) + ((double)refSizeOrg * 32.00)) / 8.00 / 1024.00 / 1024.00 / 1024.00 );
 	printf( "Elapsed Time: %lf\n", elapsedTimeKmc );
