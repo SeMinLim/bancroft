@@ -92,17 +92,16 @@ void fastaReader( char *filename ) {
 }
 // KMC
 void kmc( char *filename ) {
-	// Do 2-bit Encoding & Put all 256-mers to Map & Count the number of occurrence
 	uint32_t index = 0;
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		uint32_t remainder = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
-			// Encode first
+			// Encode subsequence first
 			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
 			encoder(subseq, encSubseq);
-			// Put 256-mers, index, and occurrence to the reference
+			// Put encoded subsequence, index, and occurrence to the reference
 			if ( reference.insert(make_pair(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					      make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 					      make_pair(encSubseq[6], encSubseq[7]))))))), make_pair(index, 1))).second == false ) {
@@ -168,15 +167,15 @@ int main() {
 	double processFinishKmc = timeChecker();
 	double elapsedTimeKmc = processFinishKmc - processStartKmc;
 	
-	printf( "--------------------------------------------\n" );
+	printf( "--------------------------------------------------------------------------------\n" );	
 	printf( "KMC RESULT\n" );
 	printf( "KMER [Total]: %ld\n", seqSizeOrg );
 	printf( "KMER [Count]: %ld\n", refSizeOrg );
-	printf( "KMER [Percentage]: %0.8f\n", (double)(refSizeOrg / seqSizeOrg) * 100 );
-	printf( "Reference Book [Size]: %0.4f GB\n", (double)((refSizeOrg * 512) + (refSizeOrg * 32)) / 8 / 1024 / 1024 / 1024 );
+	printf( "KMER [Percentage]: %0.4f\n", (double)refSizeOrg / (double)seqSizeOrg * 100.00 );
+	printf( "Reference Book [Size]: %0.4f GB\n", 
+		(((double)refSizeOrg * 512.00) + ((double)refSizeOrg * 32.00)) / 8.00 / 1024.00 / 1024.00 / 1024.00 );
 	printf( "Elapsed Time: %lf\n", elapsedTimeKmc );
-	printf( "--------------------------------------------\n" );
-	
+	printf( "--------------------------------------------------------------------------------\n" );	
 	
 	return 0;
 }
