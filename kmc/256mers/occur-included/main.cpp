@@ -28,22 +28,23 @@ map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, p
     uint32_t> reference;
 
 
-// Required Functions
+//// Required Functions
+// Time Checker
 static inline double timeChecker( void ) {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return (double)(tv.tv_sec) + (double)(tv.tv_usec) / 1000000;
 }
-bool decendingOrder( pair<
-		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
-		     pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t>& x, 
-		     pair<
-		     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
-		     pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t>& y ) {
+// Descending Order Sorter
+bool descendingOrder( pair<
+		      pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
+		      pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t>& x, 
+		      pair<
+		      pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
+		      pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, uint32_t>& y ) {
 	return x.second > y.second;
 }
-
-// Encoder & Decoder
+// 2-bit Encoder
 void encoder( string seqLine, uint64_t *encKmer ) {
 	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		encKmer[i] = 0;
@@ -60,6 +61,7 @@ void encoder( string seqLine, uint64_t *encKmer ) {
 		}
 	}
 }
+// 2-bit Decoder
 void decoder( const uint64_t *encKmer, string &seqLine ) {
 	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		for ( uint64_t j = 0; j < ENCKMERBUFUNIT; j ++ ) {
@@ -72,11 +74,10 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 		}
 	}
 }
-
-// File Reader
+// Sequence File Reader
 void fastaReader( char *filename ) {
 	string seqLine;
-
+	// Read
 	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
@@ -84,24 +85,21 @@ void fastaReader( char *filename ) {
 			seqSizeOrg += seqLine.size();
 		}
 	}
-
+	// Terminate
 	f_data_sequences.close();
 	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
 	fflush( stdout );
 }
-
+// KMC
 void kmc( char *filename ) {
-	// Do 2-bit Encoding & Put all 256-mers to Map & Count the number of occurrence
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
-
-			// Encode first
+			// Encode subsequence first
 			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
 			encoder(subseq, encSubseq);
-
-			// Put 256-mers and update the number of occurrence
+			// Put subsequence and occurrence to the reference
 			if ( reference.insert(make_pair(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
 					      make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
 					      make_pair(encSubseq[6], encSubseq[7]))))))), 1)).second == false ) {
@@ -110,7 +108,6 @@ void kmc( char *filename ) {
 					     make_pair(encSubseq[6], encSubseq[7])))))))) += 1;
 			} else refSizeOrg ++;
 			start += 1;
-
 			// Check the progress
 			if ( refSizeOrg % 1000000 == 0 ) {
 				printf( "[STEP 2] Generating 2-bit encoded k-mer table...[%lu]\n", refSizeOrg );
@@ -120,16 +117,14 @@ void kmc( char *filename ) {
 	}
 	printf( "[STEP 2] Generating 2-bit encoded k-mer table is done!\n" );
 	fflush( stdout );
-	
 	// Do sorting
 	vector<pair<
 	       pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
 	       pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>, 
 	       uint32_t>> reference_vector(reference.begin(), reference.end());
-	sort(reference_vector.begin(), reference_vector.end(), decendingOrder);
+	sort(reference_vector.begin(), reference_vector.end(), descendingOrder);
 	printf( "[STEP 3] Sorting the k-mers through decending order is done!\n" );
 	fflush( stdout );
-
 	// Write the reference as binary file
 	ofstream f_data_result(filename, ios::binary);
 	for ( uint64_t i = 0; i < reference_vector.size(); i ++ ) {
@@ -162,19 +157,19 @@ int main() {
 
 	// Kmer counting
 	double processStartKmc = timeChecker();
-	kmc( filenameOut);
+	kmc( filenameOut );
 	double processFinishKmc = timeChecker();
 	double elapsedTimeKmc = processFinishKmc - processStartKmc;
 	
-	printf( "--------------------------------------------\n" );
+	printf( "--------------------------------------------------------------------------------\n" );	
 	printf( "KMC RESULT\n" );
 	printf( "KMER [Total]: %ld\n", seqSizeOrg );
 	printf( "KMER [Count]: %ld\n", refSizeOrg );
-	printf( "KMER [Percentage]: %0.8f\n", (double)(refSizeOrg / seqSizeOrg) * 100 );
-	printf( "Reference Book [Size]: %0.4f GB\n", (double)((refSizeOrg * 512) + (refSizeOrg * 32)) / 8 / 1024 / 1024 / 1024 );
+	printf( "KMER [Percentage]: %0.4f\n", (double)refSizeOrg / (double)seqSizeOrg * 100.00 );
+	printf( "Reference Book [Size]: %0.4f GB\n", 
+		(((double)refSizeOrg * 512.00) + ((double)refSizeOrg * 32.00)) / 8.00 / 1024.00 / 1024.00 / 1024.00 );
 	printf( "Elapsed Time: %lf\n", elapsedTimeKmc );
-	printf( "--------------------------------------------\n" );
-	
+	printf( "--------------------------------------------------------------------------------\n" );		
 	
 	return 0;
 }
