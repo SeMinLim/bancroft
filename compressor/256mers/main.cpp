@@ -103,8 +103,9 @@ void refReader( char *filename ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
 		// Insert 256-mer and index to Map
-		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
-				      		make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
+		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], 
+						make_pair(encKmer[2], make_pair(encKmer[3], 
+						make_pair(encKmer[4], make_pair(encKmer[5], 
 				      		make_pair(encKmer[6], encKmer[7]))))))), 
 				      		(uint32_t)encKmer[8])).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
@@ -154,7 +155,7 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 	}
 }
 // Reverse Complement
-void complementer( const string reversed, string &complemented ) {
+void complementer( string reversed, string &complemented ) {
 	for ( uint64_t i = 0; i < KMERLENGTH; i ++ ) {
 		if ( reversed[i] == 'A' ) complemented.push_back('T');
 		else if ( reversed[i] == 'C' ) complemented.push_back('G');
@@ -164,6 +165,7 @@ void complementer( const string reversed, string &complemented ) {
 }
 // Compressor [CHROMOSOME UNIT]
 void compressor_unit_ch( const uint64_t stride ) {
+	uint64_t index = 0;
 	uint32_t prevIndex = 0;
 	uint32_t currIndex = 0;
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
@@ -176,18 +178,19 @@ void compressor_unit_ch( const uint64_t stride ) {
 			string subseqRev = subseq;
 			// Get reverse complement
 			string subseqCom;
-			subseqCom.reserve(KMERLENGTH);
 			complementer(subseqRev, subseqCom);
 			// Encode original subsequence first
 			uint64_t encSubseqOrg[ENCKMERBUFSIZE] = {0, };
 			encoder(subseqOrg, encSubseqOrg);
 			// Check possible to compress
-			if ( reference.find(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], make_pair(encSubseqOrg[2], 
-					    make_pair(encSubseqOrg[3], make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+			if ( reference.find(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
+					    make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
+					    make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
 					    make_pair(encSubseqOrg[6], encSubseqOrg[7])))))))) != reference.end() ) {
 				// Possible to compress, then store the current index
-				currIndex = reference.at(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], make_pair(encSubseqOrg[2], 
-							 make_pair(encSubseqOrg[3], make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+				currIndex = reference.at(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
+							 make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
+							 make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
 							 make_pair(encSubseqOrg[6], encSubseqOrg[7]))))))));
 				// Compare the current index with the previous one
 				if ( seqSizeCmpP != 0 ) {
@@ -197,19 +200,21 @@ void compressor_unit_ch( const uint64_t stride ) {
 				prevIndex = currIndex;
 				seqSizeCmpP ++;
 				start += KMERLENGTH;
+				index += KMERLENGTH;
 			} else {
 				// Encode reverse complement
 				uint64_t encSubseqCom[ENCKMERBUFSIZE] = {0, };
 				encoder(subseqCom, encSubseqCom);
 				// Check possible to compress
-				if ( reference.find(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], make_pair(encSubseqCom[2], 
-						    make_pair(encSubseqCom[3], make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
+				if ( reference.find(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
+						    make_pair(encSubseqCom[2], make_pair(encSubseqCom[3], 
+						    make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
 						    make_pair(encSubseqCom[6], encSubseqCom[7])))))))) != reference.end() ) {
 					// Possible to compress, then store the current index
 					currIndex = reference.at(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
 								 make_pair(encSubseqCom[2], make_pair(encSubseqCom[3],
 								 make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
-								 make_pair(encSubseqCom[5], encSubseqCom[6]))))))));
+								 make_pair(encSubseqCom[6], encSubseqCom[7]))))))));
 					// Compare the current index with the previous one
 					if ( seqSizeCmpP != 0 ) {
 						if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
@@ -218,18 +223,25 @@ void compressor_unit_ch( const uint64_t stride ) {
 					prevIndex = currIndex;
 					seqSizeCmpP ++;
 					start += KMERLENGTH;
+					index += KMERLENGTH;
 				} else {
 					seqSizeCmpN ++;
 					start += stride;
+					index += stride;
 				}
 			}
 		}
 		// Handle remainder
 		uint64_t remainder = sequences[seqIdx].size() - start;
-		if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
+		if ( remainder > 0 ) {
+			seqSizeRmnd += (remainder * 2) + 1;
+			index += remainder;
+		}
 		// Check the progress
-		printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
-		fflush( stdout );
+		if ( index % 1000000 == 0 ) {
+			printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", index, seqSizeOrg );
+			fflush( stdout );
+		}
 	}
 	// Terminate
 	printf( "[STEP 3] Compressing the sequences is done!\n" );
@@ -242,18 +254,27 @@ void compressor_unit_wh( const uint64_t stride ) {
 	uint32_t currIndex = 0;
 	uint64_t start = 0;
 	while ( start <= sequence.size() - KMERLENGTH ) {
+		// Get subsequence
 		string subseq = sequence.substr(start, KMERLENGTH);
-		// Encode first
-		uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
-		encoder(subseq, encSubseq);
+		string subseqOrg = subseq;
+		reverse(subseq.begin(), subseq.end());
+		string subseqRev = subseq;
+		// Get reverse complement
+		string subseqCom;
+		complementer(subseqRev, subseqCom);
+		// Encode original subsequence first
+		uint64_t encSubseqOrg[ENCKMERBUFSIZE] = {0, };
+		encoder(subseqOrg, encSubseqOrg);
 		// Check possible to compress
-		if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-				    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-				    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
+		if ( reference.find(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
+				    make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
+				    make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+				    make_pair(encSubseqOrg[6], encSubseqOrg[7])))))))) != reference.end() ) {
 			// Possible to compress, then store the current index
-			currIndex = reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-						 make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-						 make_pair(encSubseq[6], encSubseq[7]))))))));
+			currIndex = reference.at(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
+						 make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
+						 make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+						 make_pair(encSubseqOrg[6], encSubseqOrg[7]))))))));
 			// Compare the current index to the previous one
 			if ( seqSizeCmpP != 0 ) {
 				if ( currIndex == prevIndex + KMERLENGTH ) {
@@ -265,8 +286,31 @@ void compressor_unit_wh( const uint64_t stride ) {
 			seqSizeCmpP ++;
 			start += KMERLENGTH;
 		} else {
-			seqSizeCmpN ++;
-			start += stride;
+			// Encode reverse complement
+			uint64_t encSubseqCom[ENCKMERBUFSIZE] = {0, };
+			encoder(subseqCom, encSubseqCom);
+			// Check possible to compress
+			if ( reference.find(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
+					    make_pair(encSubseqCom[2], make_pair(encSubseqCom[3], 
+					    make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
+					    make_pair(encSubseqCom[6], encSubseqCom[7])))))))) != reference.end() ) {
+				// Possible to compress, then store the current index
+				currIndex = reference.at(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
+							 make_pair(encSubseqCom[2], make_pair(encSubseqCom[3],
+							 make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
+							 make_pair(encSubseqCom[6], encSubseqCom[7]))))))));
+				// Compare the current index with the previous one
+				if ( seqSizeCmpP != 0 ) {
+					if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+				}
+				// Update the parameters
+				prevIndex = currIndex;
+				seqSizeCmpP ++;
+				start += KMERLENGTH;
+			} else {
+				seqSizeCmpN ++;
+				start += stride;
+			}
 		}
 		// Check the progress
 		if ( start % 1000000 == 0 ) {
