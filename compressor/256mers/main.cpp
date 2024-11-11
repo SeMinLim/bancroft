@@ -153,6 +153,15 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 		}
 	}
 }
+// Reverse Complement
+void complementer( const string reversed, string &complemented ) {
+	for ( uint64_t i = 0; i < KMERLENGTH; i ++ ) {
+		if ( reversed[i] == 'A' ) complemented.push_back('T');
+		else if ( reversed[i] == 'C' ) complemented.push_back('G');
+		else if ( reversed[i] == 'G' ) complemented.push_back('C');
+		else if ( reversed[i] == 'T' ) complemented.push_back('A');
+	}
+}
 // Compressor [CHROMOSOME UNIT]
 void compressor_unit_ch( const uint64_t stride ) {
 	uint32_t prevIndex = 0;
@@ -160,31 +169,59 @@ void compressor_unit_ch( const uint64_t stride ) {
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
+			// Get subsequence
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
-			// Encode first
-			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
-			encoder(subseq, encSubseq);
+			string subseqOrg = subseq;
+			reverse(subseq.begin(), subseq.end());
+			string subseqRev = subseq;
+			// Get reverse complement
+			string subseqCom;
+			subseqCom.reserve(KMERLENGTH);
+			complementer(subseqRev, subseqCom);
+			// Encode original subsequence first
+			uint64_t encSubseqOrg[ENCKMERBUFSIZE] = {0, };
+			encoder(subseqOrg, encSubseqOrg);
 			// Check possible to compress
-			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-					    make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-					    make_pair(encSubseq[6], encSubseq[7])))))))) != reference.end() ) {
+			if ( reference.find(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], make_pair(encSubseqOrg[2], 
+					    make_pair(encSubseqOrg[3], make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+					    make_pair(encSubseqOrg[6], encSubseqOrg[7])))))))) != reference.end() ) {
 				// Possible to compress, then store the current index
-				currIndex = reference.at(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], 
-							 make_pair(encSubseq[3], make_pair(encSubseq[4], make_pair(encSubseq[5], 
-							 make_pair(encSubseq[6], encSubseq[7]))))))));
+				currIndex = reference.at(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], make_pair(encSubseqOrg[2], 
+							 make_pair(encSubseqOrg[3], make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+							 make_pair(encSubseqOrg[6], encSubseqOrg[7]))))))));
 				// Compare the current index with the previous one
 				if ( seqSizeCmpP != 0 ) {
-					if ( currIndex == prevIndex + KMERLENGTH ) {
-						seqSizeCmpI ++;
-					}
+					if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
 				}
 				// Update the parameters
 				prevIndex = currIndex;
 				seqSizeCmpP ++;
 				start += KMERLENGTH;
 			} else {
-				seqSizeCmpN ++;
-				start += stride;
+				// Encode reverse complement
+				uint64_t encSubseqCom[ENCKMERBUFSIZE] = {0, };
+				encoder(subseqCom, encSubseqCom);
+				// Check possible to compress
+				if ( reference.find(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], make_pair(encSubseqCom[2], 
+						    make_pair(encSubseqCom[3], make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
+						    make_pair(encSubseqCom[6], encSubseqCom[7])))))))) != reference.end() ) {
+					// Possible to compress, then store the current index
+					currIndex = reference.at(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
+								 make_pair(encSubseqCom[2], make_pair(encSubseqCom[3],
+								 make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
+								 make_pair(encSubseqCom[5], encSubseqCom[6]))))))));
+					// Compare the current index with the previous one
+					if ( seqSizeCmpP != 0 ) {
+						if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+					}
+					// Update the parameters
+					prevIndex = currIndex;
+					seqSizeCmpP ++;
+					start += KMERLENGTH;
+				} else {
+					seqSizeCmpN ++;
+					start += stride;
+				}
 			}
 		}
 		// Handle remainder
@@ -248,11 +285,11 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/smartssd0/semin/hg002_rep1_sub.fasta";
+	char *filenameS = "/mnt/ephemeral/hg002_rep1_sub.fastq";
 	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
-	seqReaderFASTA( filenameS );
+	seqReaderFASTQ( filenameS );
 
 	// Read reference file
 	refReader( filenameR );
