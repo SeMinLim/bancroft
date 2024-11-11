@@ -193,7 +193,9 @@ void compressor_unit_ch( const uint64_t stride ) {
 							 make_pair(encSubseqOrg[6], encSubseqOrg[7]))))))));
 				// Compare the current index with the previous one
 				if ( seqSizeCmpP != 0 ) {
-					if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+					if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
+						seqSizeCmpI ++;
+					}
 				}
 				// Update the parameters
 				prevIndex = currIndex;
@@ -215,7 +217,9 @@ void compressor_unit_ch( const uint64_t stride ) {
 								 make_pair(encSubseqCom[6], encSubseqCom[7]))))))));
 					// Compare the current index with the previous one
 					if ( seqSizeCmpP != 0 ) {
-						if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+						if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
+							seqSizeCmpI ++;
+						}
 					}
 					// Update the parameters
 					prevIndex = currIndex;
@@ -270,7 +274,7 @@ void compressor_unit_wh( const uint64_t stride ) {
 						 make_pair(encSubseqOrg[6], encSubseqOrg[7]))))))));
 			// Compare the current index to the previous one
 			if ( seqSizeCmpP != 0 ) {
-				if ( currIndex == prevIndex + KMERLENGTH ) {
+				if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
 					seqSizeCmpI ++;
 				}
 			}
@@ -294,7 +298,9 @@ void compressor_unit_wh( const uint64_t stride ) {
 							 make_pair(encSubseqCom[6], encSubseqCom[7]))))))));
 				// Compare the current index with the previous one
 				if ( seqSizeCmpP != 0 ) {
-					if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+					if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
+						seqSizeCmpI ++;
+					}
 				}
 				// Update the parameters
 				prevIndex = currIndex;
