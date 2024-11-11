@@ -1,4 +1,5 @@
 #include <sys/time.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -66,40 +67,32 @@ void seqReaderFASTA( char *filename ) {
 	fflush( stdout );
 }
 // Sequence FASTQ File Reader
-void seqReaderFASTQ( char *filenameI, char *filenameO ) {
+void seqReaderFASTQ( char *filename ) {
 	uint64_t counter = 0;
 	string seqLine;
 	// Read
-	ifstream f_data_sequences(filenameI);
-	// Write
-	ofstream f_data_result(filenameO);
+	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( counter == 0 ) {
 			counter ++;
-			f_data_result << seqLine << "\n";
 		} else if ( counter == 1 ) {
 			if ( CHROMOSOMEUNIT ) sequences.push_back(seqLine);
 			else sequence += seqLine;
 			seqSizeOrg += seqLine.size();
 			counter ++;
-			f_data_result << seqLine << "\n";
 		} else if ( counter == 2 ) {
 			counter ++;
-			f_data_result << seqLine << "\n";
 		} else if ( counter == 3 ) {
 			counter = 0;
-			f_data_result << seqLine << "\n";
-			if ( seqSizeOrg >= 2948627755 ) break;
 		}
 	}
 	// Terminate
 	f_data_sequences.close();
 	printf( "---------------------------------------------------------------------\n" );
-	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
+	printf( "[STEP 1] Reading sequence fastq file is done!\n" );
 	printf( "---------------------------------------------------------------------\n" );
 	fflush( stdout );
 }
-
 // Reference File Reader
 void refReader( char *filename ) {
 	ifstream f_data_reference(filename, ios::binary);
@@ -111,8 +104,9 @@ void refReader( char *filename ) {
 		}
 		// Insert 256-mer and index to Map
 		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], 
-				      make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
-				      make_pair(encKmer[6], encKmer[7]))))))), (uint32_t)encKmer[8])).second == false ) {
+				      		make_pair(encKmer[3], make_pair(encKmer[4], make_pair(encKmer[5], 
+				      		make_pair(encKmer[6], encKmer[7]))))))), 
+				      		(uint32_t)encKmer[8])).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);
@@ -254,96 +248,11 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	//char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	//char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1IndexIncluded.bin";
-	char *filenameI = "/mnt/ephemeral/hg002_rep1.fastq";
-	char *filenameO = "/mnt/ephemeral/hg002_rep1_sub.fastq";
+	char *filenameS = "/mnt/smartssd0/semin/hg002_rep1_sub.fasta";
+	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1IndexIncluded.bin";
 
-	seqReaderFASTQ( filenameI, filenameO );
 	// Read sequence file
-	//seqReaderFASTA( filenameS );
-/*
-	// DEMO
-	printf( "_____________________________________________________________________\n" );
-	printf( "|                                                                   |\n" );
-	printf( "|                          BANCROFT                                 |\n" );
-	printf( "|                         Compressor                                |\n" );
-	printf( "|                      ARDA Group @ UCI                             |\n" );
-	printf( "|               [STEP 1] Reference Sequence Read                    |\n" );
-	printf( "|                 [STEP 2] Binary Codebook Read                     |\n" );
-	printf( "|                     [STEP 3] Compression                          |\n" );
-	printf( "|___________________________________________________________________|\n" );
-
-	double step1_start = timeChecker();
 	seqReaderFASTA( filenameS );
-	double step1_finish = timeChecker();
-	double step1 = step1_finish - step1_start;
-	printf( "\033[0;32m[STEP 1]\033[0m\033[0;33m[100%]\033[0m[Elapsed Time: %lf seconds]\n", step1 );
-
-	double step2_start = timeChecker();
-	seqReaderFASTQ( filenameS );
-	double step2_finish = timeChecker();
-	double step2 = step2_finish - step2_start;
-	printf( "\033[0;32m[STEP 2]\033[0m\033[0;33m[100%]\033[0m[Elapsed Time: %lf seconds]\n", step2 );
-
-	double step3_start = timeChecker();
-	for ( uint64_t i = 0; i < 11; i ++ ) {
-		if ( i == 0 ) {
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[0%]\033[0m[Compression Ratio: 0x][Match Rate: 0%]\n" );
-			sleep(8);
-			uint64_t drager = (16384 * 16384);
-		} else if ( i == 1 ) {
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[10%]\033[0m[Compression Ratio: 32x][Match Rate: 97%]\n" );
-			sleep(8);
-			uint64_t drager = (16384 * 16384);
-		} else if ( i == 2 ) {
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[0%]\033[0m[Compression Ratio: 27x][Match Rate: 97%]\n" );
-			sleep(8);
-			uint64_t drager = (16384 * 16384);
-		} else if ( i == 3 ) {
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[0%]\033[0m[Compression Ratio: 26x][Match Rate: 97%]\n" );
-			sleep(8);
-			uint64_t drager = (16384 * 16384);
-		} else if ( i == 4 ) {
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[0%]\033[0m[Compression Ratio: 26x][Match Rate: 97%]\n" );
-			sleep(8);
-			uint64_t drager = (16384 * 16384);
-		} else if ( i == 5 ) {
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[0%]\033[0m[Compression Ratio: 26x][Match Rate: 97%]\n" );
-			sleep(8);
-			uint64_t drager = (16384 * 16384);
-		} else if ( i == 6 ) {
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[0%]\033[0m[Compression Ratio: 26x][Match Rate: 97%]\n" );
-			sleep(8);
-			uint64_t drager = (16384 * 16384);
-		} else if ( i == 7 ) {
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[0%]\033[0m[Compression Ratio: 26x][Match Rate: 97%]\n" );
-			sleep(8);
-			uint64_t drager = (16384 * 16384);
-		} else if ( i == 8 ) {
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[0%]\033[0m[Compression Ratio: 26x][Match Rate: 97%]\n" );
-			sleep(8);
-			uint64_t drager = (16384 * 16384);
-		} else if ( i == 9 ) {
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[0%]\033[0m[Compression Ratio: 26x][Match Rate: 97%]\n" );
-			sleep(8);
-			uint64_t drager = (16384 * 16384);
-		} else if ( i == 10 ) {
-			double step3_finish = timeChecker();
-			double step3 = step3_finish - step3_start;
-			printf( "\033[0;32m[STEP 3]\033[0m\033[0;33m[0%]\033[0m[Compression Ratio: 26x][Match Rate: 97%]
-				[Elapsed Time: %lf]\n", step3 );
-		}
-	}
-	printf( "_____________________________________________________________________\n" );
-	printf( "|                                                                   |\n" );
-	printf( "|                          BANCROFT                                 |\n" );
-	printf( "|                         Compressor                                |\n" );
-	printf( "|                           Result                                  |\n" );
-	printf( "|             File Size [Original]     :   2.75 GB                  |\n" );
-	printf( "|             File Size [2-bit Encoded]: 703.01 MB                  |\n" );
-	printf( "|             File Size [Bancroft Comp]:  27.39 MB                  |\n" );
-	printf( "|___________________________________________________________________|\n" );
 
 	// Read reference file
 	refReader( filenameR );
@@ -388,6 +297,6 @@ int main( int argc, char **argv ) {
 		printf( "Elapsed Time: %lf\n", elapsedTime );
 		printf( "---------------------------------------------------------------------\n" );
 	}
-*/
+
 	return 0;
 }
