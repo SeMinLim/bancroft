@@ -165,7 +165,6 @@ void complementer( string reversed, string &complemented ) {
 }
 // Compressor [CHROMOSOME UNIT]
 void compressor_unit_ch( const uint64_t stride ) {
-	uint64_t index = 0;
 	uint32_t prevIndex = 0;
 	uint32_t currIndex = 0;
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
@@ -200,7 +199,6 @@ void compressor_unit_ch( const uint64_t stride ) {
 				prevIndex = currIndex;
 				seqSizeCmpP ++;
 				start += KMERLENGTH;
-				index += KMERLENGTH;
 			} else {
 				// Encode reverse complement
 				uint64_t encSubseqCom[ENCKMERBUFSIZE] = {0, };
@@ -223,23 +221,18 @@ void compressor_unit_ch( const uint64_t stride ) {
 					prevIndex = currIndex;
 					seqSizeCmpP ++;
 					start += KMERLENGTH;
-					index += KMERLENGTH;
 				} else {
 					seqSizeCmpN ++;
 					start += stride;
-					index += stride;
 				}
 			}
 		}
 		// Handle remainder
 		uint64_t remainder = sequences[seqIdx].size() - start;
-		if ( remainder > 0 ) {
-			seqSizeRmnd += (remainder * 2) + 1;
-			index += remainder;
-		}
+		if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
 		// Check the progress
-		if ( index % 1000000 == 0 ) {
-			printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", index, seqSizeOrg );
+		if ( seqIdx % 1000 == 0 ) {
+			printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
 			fflush( stdout );
 		}
 	}
