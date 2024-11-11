@@ -54,7 +54,7 @@ void fastaReader( char *filename ) {
 
 
 int main( void ) {
-	char *filenameI = "/mnt/ssd0/semin/bancroft/data/sequences/hg16.fasta";
+	char *filenameI = "/mnt/ssd0/semin/bancroft/data/sequences/hg002_rep1.fasta";
 	
 	// Read assembled sequence file 
 	fastaReader( filenameI );

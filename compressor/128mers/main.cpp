@@ -14,9 +14,9 @@
 using namespace std;
 
 
-#define KMERLENGTH 512
+#define KMERLENGTH 128
 #define ENCKMERBUFUNIT 32
-#define ENCKMERBUFSIZE 16
+#define ENCKMERBUFSIZE 4
 #define BINARYRWUNIT 8
 #define CHROMOSOMEUNIT 1
 #define GROUPVARINT 1
@@ -24,8 +24,7 @@ using namespace std;
 
 string sequence;
 vector<string> sequences;
-map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
-    pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>>>>>>>>>, 
+map<pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>, 
     uint32_t> reference;
 
 
@@ -99,20 +98,14 @@ void refReader( char *filename ) {
 	ifstream f_data_reference(filename, ios::binary);
 	for ( uint64_t i = 0; i < refSizeUsd; i ++ ) {
 		uint64_t encKmer[ENCKMERBUFSIZE + 1] = {0, };
-		// Read 512-mer and index
+		// Read 128-mer and index
 		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
-		// Insert 512-mer and index to Map
+		// Insert 128-mer and index to Map
 		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], 
-						make_pair(encKmer[2], make_pair(encKmer[3], 
-						make_pair(encKmer[4], make_pair(encKmer[5], 
-				      		make_pair(encKmer[6], make_pair(encKmer[7], 
-						make_pair(encKmer[8], make_pair(encKmer[9], 
-						make_pair(encKmer[10], make_pair(encKmer[11], 
-						make_pair(encKmer[12], make_pair(encKmer[13], 
-						make_pair(encKmer[14], encKmer[15]))))))))))))))), 
-				      		(uint32_t)encKmer[16])).second == false ) {
+				      		make_pair(encKmer[2], encKmer[3]))), 
+				      		(uint32_t)encKmer[4])).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);
@@ -188,22 +181,10 @@ void compressor_unit_ch( const uint64_t stride ) {
 			encoder(subseqOrg, encSubseqOrg);
 			// Check possible to compress
 			if ( reference.find(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
-					    make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
-					    make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
-					    make_pair(encSubseqOrg[6], make_pair(encSubseqOrg[7],
-					    make_pair(encSubseqOrg[8], make_pair(encSubseqOrg[9], 
-					    make_pair(encSubseqOrg[10], make_pair(encSubseqOrg[11],
-					    make_pair(encSubseqOrg[12], make_pair(encSubseqOrg[13],
-					    make_pair(encSubseqOrg[14], encSubseqOrg[15])))))))))))))))) != reference.end() ) {
+					    make_pair(encSubseqOrg[2], encSubseqOrg[3])))) != reference.end() ) {
 				// Possible to compress, then store the current index
 				currIndex = reference.at(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
-							 make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
-							 make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
-							 make_pair(encSubseqOrg[6], make_pair(encSubseqOrg[7], 
-							 make_pair(encSubseqOrg[8], make_pair(encSubseqOrg[9],
-							 make_pair(encSubseqOrg[10], make_pair(encSubseqOrg[11],
-							 make_pair(encSubseqOrg[12], make_pair(encSubseqOrg[13],
-							 make_pair(encSubseqOrg[14], encSubseqOrg[15]))))))))))))))));
+							 make_pair(encSubseqOrg[2], encSubseqOrg[3]))));
 				// Compare the current index with the previous one
 				if ( seqSizeCmpP != 0 ) {
 					if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
@@ -217,23 +198,11 @@ void compressor_unit_ch( const uint64_t stride ) {
 				uint64_t encSubseqCom[ENCKMERBUFSIZE] = {0, };
 				encoder(subseqCom, encSubseqCom);
 				// Check possible to compress
-				if ( reference.find(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
-						    make_pair(encSubseqCom[2], make_pair(encSubseqCom[3], 
-						    make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
-						    make_pair(encSubseqCom[6], make_pair(encSubseqCom[7],
-						    make_pair(encSubseqCom[8], make_pair(encSubseqCom[9],
-						    make_pair(encSubseqCom[10], make_pair(encSubseqCom[11],
-						    make_pair(encSubseqCom[12], make_pair(encSubseqCom[13],
-						    make_pair(encSubseqCom[14], encSubseqCom[15])))))))))))))))) != reference.end() ) {
+				if ( reference.find(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1],
+						    make_pair(encSubseqCom[2], encSubseqCom[3])))) != reference.end() ) {
 					// Possible to compress, then store the current index
-					currIndex = reference.at(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
-								 make_pair(encSubseqCom[2], make_pair(encSubseqCom[3],
-								 make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
-								 make_pair(encSubseqCom[6], make_pair(encSubseqCom[7],
-								 make_pair(encSubseqCom[8], make_pair(encSubseqCom[9],
-								 make_pair(encSubseqCom[10], make_pair(encSubseqCom[11],
-								 make_pair(encSubseqCom[12], make_pair(encSubseqCom[13],
-								 make_pair(encSubseqCom[14], encSubseqCom[15]))))))))))))))));
+					currIndex = reference.at(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1],
+								 make_pair(encSubseqCom[2], encSubseqCom[3]))));
 					// Compare the current index with the previous one
 					if ( seqSizeCmpP != 0 ) {
 						if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
@@ -281,22 +250,10 @@ void compressor_unit_wh( const uint64_t stride ) {
 		encoder(subseqOrg, encSubseqOrg);
 		// Check possible to compress
 		if ( reference.find(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
-				    make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
-				    make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
-				    make_pair(encSubseqOrg[6], make_pair(encSubseqOrg[7],
-				    make_pair(encSubseqOrg[8], make_pair(encSubseqOrg[9],
-				    make_pair(encSubseqOrg[10], make_pair(encSubseqOrg[11],
-				    make_pair(encSubseqOrg[12], make_pair(encSubseqOrg[13],
-				    make_pair(encSubseqOrg[14], encSubseqOrg[15])))))))))))))))) != reference.end() ) {
+				    make_pair(encSubseqOrg[2], encSubseqOrg[3])))) != reference.end() ) {
 			// Possible to compress, then store the current index
 			currIndex = reference.at(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
-						 make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
-						 make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
-						 make_pair(encSubseqOrg[6], make_pair(encSubseqOrg[7],
-						 make_pair(encSubseqOrg[8], make_pair(encSubseqOrg[9],
-						 make_pair(encSubseqOrg[10], make_pair(encSubseqOrg[11],
-						 make_pair(encSubseqOrg[12], make_pair(encSubseqOrg[13],
-						 make_pair(encSubseqOrg[14], encSubseqOrg[15]))))))))))))))));
+						 make_pair(encSubseqOrg[2], encSubseqOrg[3]))));
 			// Compare the current index to the previous one
 			if ( seqSizeCmpP != 0 ) {
 				if ( currIndex == prevIndex + KMERLENGTH ) {
@@ -312,23 +269,11 @@ void compressor_unit_wh( const uint64_t stride ) {
 			uint64_t encSubseqCom[ENCKMERBUFSIZE] = {0, };
 			encoder(subseqCom, encSubseqCom);
 			// Check possible to compress
-			if ( reference.find(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
-					    make_pair(encSubseqCom[2], make_pair(encSubseqCom[3], 
-					    make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
-					    make_pair(encSubseqCom[6], make_pair(encSubseqCom[7],
-					    make_pair(encSubseqCom[8], make_pair(encSubseqCom[9],
-					    make_pair(encSubseqCom[10], make_pair(encSubseqCom[11],
-					    make_pair(encSubseqCom[12], make_pair(encSubseqCom[13],
-					    make_pair(encSubseqCom[14], encSubseqCom[15])))))))))))))))) != reference.end() ) {
+			if ( reference.find(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1],
+					    make_pair(encSubseqCom[2], encSubseqCom[3])))) != reference.end() ) {
 				// Possible to compress, then store the current index
-				currIndex = reference.at(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
-							 make_pair(encSubseqCom[2], make_pair(encSubseqCom[3],
-							 make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
-							 make_pair(encSubseqCom[6], make_pair(encSubseqCom[7],
-							 make_pair(encSubseqCom[8], make_pair(encSubseqCom[9],
-							 make_pair(encSubseqCom[10], make_pair(encSubseqCom[11],
-							 make_pair(encSubseqCom[12], make_pair(encSubseqCom[13],
-							 make_pair(encSubseqCom[14], encSubseqCom[15]))))))))))))))));
+				currIndex = reference.at(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1],
+							 make_pair(encSubseqCom[2], encSubseqCom[3]))));
 				// Compare the current index with the previous one
 				if ( seqSizeCmpP != 0 ) {
 					if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
@@ -360,7 +305,7 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 int main( int argc, char **argv ) {
 	char *filenameS = "/mnt/ephemeral/hg002_rep1_sub.fastq";
-	char *filenameR = "/mnt/ephemeral/hg19Reference512MersFrom1IndexIncluded.bin";
+	char *filenameR = "/mnt/ephemeral/hg19Reference128MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
 	seqReaderFASTQ( filenameS );
@@ -369,7 +314,7 @@ int main( int argc, char **argv ) {
 	refReader( filenameR );
 
 	// Compression
-	for ( uint64_t stride = 1; stride < 1024; stride = stride * 2 ) {
+	for ( uint64_t stride = 1; stride < 256; stride = stride * 2 ) {
 		// Variable initialization
 		seqSizeCmpN = 0;
 		seqSizeCmpI = 0;
