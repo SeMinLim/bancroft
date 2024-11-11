@@ -1,4 +1,5 @@
 #include <sys/time.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -9,6 +10,7 @@
 #include <string>
 #include <unordered_map>
 #include <map>
+#include <algorithm>
 using namespace std;
 
 
@@ -16,77 +18,118 @@ using namespace std;
 #define ENCKMERBUFUNIT 32
 #define ENCKMERBUFSIZE 16
 #define BINARYRWUNIT 8
+#define CHROMOSOMEUNIT 1
+#define GROUPVARINT 1
 
 
+string sequence;
 vector<string> sequences;
-map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t,
+map<pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, 
     pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, pair<uint64_t, uint64_t>>>>>>>>>>>>>>>, 
     uint32_t> reference;
 
 
 uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmpN = 0;
+uint64_t seqSizeCmpI = 0;
 uint64_t seqSizeCmpP = 0;
 uint64_t seqSizeRmnd = 0;
 
-// Reference: hg19From2
-//uint64_t refSizeOrg = ;
-//uint64_t refSizeUsd = ;
+
 // Reference: hg19From1
-//uint64_t refSizeOrg = 2856249498;
-uint64_t refSizeUsd = 2856249498;
+uint64_t refSizeOrg = 2849207900;
+uint64_t refSizeUsd = 2849207900;
 
 
+// Required Functions
 // Time Checker
 static inline double timeChecker( void ) {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return (double)(tv.tv_sec) + (double)(tv.tv_usec) / 1000000;
 }
-
-// File Readers
-void seqReader( char *filename ) {
+// Sequence FASTA File Reader
+void seqReaderFASTA( char *filename ) {
 	string seqLine;
-
+	// Read
 	ifstream f_data_sequences(filename);
 	while ( getline(f_data_sequences, seqLine) ) {
 		if ( seqLine[0] != '>' ) {
-			sequences.push_back(seqLine);
+			if ( CHROMOSOMEUNIT ) sequences.push_back(seqLine);
+			else sequence += seqLine;
 			seqSizeOrg += seqLine.size();
 		}
 	}
-
+	// Terminate
 	f_data_sequences.close();
+	printf( "---------------------------------------------------------------------\n" );
+	printf( "[STEP 1] Reading sequence fasta file is done!\n" );
+	printf( "---------------------------------------------------------------------\n" );
+	fflush( stdout );
 }
+// Sequence FASTQ File Reader
+void seqReaderFASTQ( char *filename ) {
+	uint64_t counter = 0;
+	string seqLine;
+	// Read
+	ifstream f_data_sequences(filename);
+	while ( getline(f_data_sequences, seqLine) ) {
+		if ( counter == 0 ) {
+			counter ++;
+		} else if ( counter == 1 ) {
+			if ( CHROMOSOMEUNIT ) sequences.push_back(seqLine);
+			else sequence += seqLine;
+			seqSizeOrg += seqLine.size();
+			counter ++;
+		} else if ( counter == 2 ) {
+			counter ++;
+		} else if ( counter == 3 ) {
+			counter = 0;
+		}
+	}
+	// Terminate
+	f_data_sequences.close();
+	printf( "---------------------------------------------------------------------\n" );
+	printf( "[STEP 1] Reading sequence fastq file is done!\n" );
+	printf( "---------------------------------------------------------------------\n" );
+	fflush( stdout );
+}
+// Reference File Reader
 void refReader( char *filename ) {
 	ifstream f_data_reference(filename, ios::binary);
 	for ( uint64_t i = 0; i < refSizeUsd; i ++ ) {
-		uint64_t encKmer[ENCKMERBUFSIZE] = {0, };
-		// Read
-		for ( uint64_t j = 0; j < ENCKMERBUFSIZE; j ++ ) {
+		uint64_t encKmer[ENCKMERBUFSIZE + 1] = {0, };
+		// Read 512-mer and index
+		for ( uint64_t j = 0; j < ENCKMERBUFSIZE + 1; j ++ ) {
 			f_data_reference.read(reinterpret_cast<char *>(&encKmer[j]), BINARYRWUNIT);
 		}
-		// Insert 512-Mers to Map
-		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], make_pair(encKmer[2], make_pair(encKmer[3], 
-				      make_pair(encKmer[4], make_pair(encKmer[5], make_pair(encKmer[6], make_pair(encKmer[7],
-				      make_pair(encKmer[8], make_pair(encKmer[9], make_pair(encKmer[10], make_pair(encKmer[11],
-				      make_pair(encKmer[12], make_pair(encKmer[13], make_pair(encKmer[14], encKmer[15]))))))))))))))), 
-				      i)).second == false ) {
+		// Insert 512-mer and index to Map
+		if ( reference.insert(make_pair(make_pair(encKmer[0], make_pair(encKmer[1], 
+						make_pair(encKmer[2], make_pair(encKmer[3], 
+						make_pair(encKmer[4], make_pair(encKmer[5], 
+				      		make_pair(encKmer[6], make_pair(encKmer[7], 
+						make_pair(encKmer[8], make_pair(encKmer[9], 
+						make_pair(encKmer[10], make_pair(encKmer[11], 
+						make_pair(encKmer[12], make_pair(encKmer[13], 
+						make_pair(encKmer[14], encKmer[15]))))))))))))))), 
+				      		(uint32_t)encKmer[16])).second == false ) {
 			printf( "There's a problem on reference code book...\n" );
 			fflush( stdout );
 			exit(1);
 		}
 		// Check the progress
 		if ( i % 1000000 == 0 ) {
-			printf( "Reference: %lu\n", i );
+			printf( "[STEP 2] Reading reference is processing...[%lu/%lu]\n", i, refSizeUsd );
 			fflush( stdout );
 		}
 	}
-
+	// Terminate
 	f_data_reference.close();
+	printf( "[STEP 2] Reading reference is done!\n" );
+	printf( "---------------------------------------------------------------------\n" );
+	fflush( stdout );
 }
-
-// Encoder & Decoder
+// 2-bit Encoder
 void encoder( string seqLine, uint64_t *encKmer ) {
 	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		encKmer[i] = 0;
@@ -103,6 +146,7 @@ void encoder( string seqLine, uint64_t *encKmer ) {
 		}
 	}
 }
+// 2-bit Decoder
 void decoder( const uint64_t *encKmer, string &seqLine ) {
 	for ( uint64_t i = 0; i < ENCKMERBUFSIZE; i ++ ) {
 		for ( uint64_t j = 0; j < ENCKMERBUFUNIT; j ++ ) {
@@ -115,24 +159,182 @@ void decoder( const uint64_t *encKmer, string &seqLine ) {
 		}
 	}
 }
-
-// Compressor
-void compressor( const uint64_t stride ) {
+// Reverse Complement
+void complementer( string reversed, string &complemented ) {
+	for ( uint64_t i = 0; i < KMERLENGTH; i ++ ) {
+		if ( reversed[i] == 'A' ) complemented.push_back('T');
+		else if ( reversed[i] == 'C' ) complemented.push_back('G');
+		else if ( reversed[i] == 'G' ) complemented.push_back('C');
+		else if ( reversed[i] == 'T' ) complemented.push_back('A');
+	}
+}
+// Compressor [CHROMOSOME UNIT]
+void compressor_unit_ch( const uint64_t stride ) {
+	uint32_t prevIndex = 0;
+	uint32_t currIndex = 0;
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
+			// Get subsequence
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
-
-			// Encode first
-			uint64_t encSubseq[ENCKMERBUFSIZE] = {0, };
-			encoder(subseq, encSubseq);
-
+			string subseqOrg = subseq;
+			reverse(subseq.begin(), subseq.end());
+			string subseqRev = subseq;
+			// Get reverse complement
+			string subseqCom;
+			complementer(subseqRev, subseqCom);
+			// Encode original subsequence first
+			uint64_t encSubseqOrg[ENCKMERBUFSIZE] = {0, };
+			encoder(subseqOrg, encSubseqOrg);
 			// Check possible to compress
-			if ( reference.find(make_pair(encSubseq[0], make_pair(encSubseq[1], make_pair(encSubseq[2], make_pair(encSubseq[3], 
-					    make_pair(encSubseq[4], make_pair(encSubseq[5], make_pair(encSubseq[6], make_pair(encSubseq[7],
-					    make_pair(encSubseq[8], make_pair(encSubseq[9], make_pair(encSubseq[10], make_pair(encSubseq[11],
-					    make_pair(encSubseq[12], make_pair(encSubseq[13], 
-					    make_pair(encSubseq[14], encSubseq[15])))))))))))))))) != reference.end() ) {
+			if ( reference.find(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
+					    make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
+					    make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+					    make_pair(encSubseqOrg[6], make_pair(encSubseqOrg[7],
+					    make_pair(encSubseqOrg[8], make_pair(encSubseqOrg[9], 
+					    make_pair(encSubseqOrg[10], make_pair(encSubseqOrg[11],
+					    make_pair(encSubseqOrg[12], make_pair(encSubseqOrg[13],
+					    make_pair(encSubseqOrg[14], encSubseqOrg[15])))))))))))))))) != reference.end() ) {
+				// Possible to compress, then store the current index
+				currIndex = reference.at(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
+							 make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
+							 make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+							 make_pair(encSubseqOrg[6], make_pair(encSubseqOrg[7], 
+							 make_pair(encSubseqOrg[8], make_pair(encSubseqOrg[9],
+							 make_pair(encSubseqOrg[10], make_pair(encSubseqOrg[11],
+							 make_pair(encSubseqOrg[12], make_pair(encSubseqOrg[13],
+							 make_pair(encSubseqOrg[14], encSubseqOrg[15]))))))))))))))));
+				// Compare the current index with the previous one
+				if ( seqSizeCmpP != 0 ) {
+					if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+				}
+				// Update the parameters
+				prevIndex = currIndex;
+				seqSizeCmpP ++;
+				start += KMERLENGTH;
+			} else {
+				// Encode reverse complement
+				uint64_t encSubseqCom[ENCKMERBUFSIZE] = {0, };
+				encoder(subseqCom, encSubseqCom);
+				// Check possible to compress
+				if ( reference.find(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
+						    make_pair(encSubseqCom[2], make_pair(encSubseqCom[3], 
+						    make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
+						    make_pair(encSubseqCom[6], make_pair(encSubseqCom[7],
+						    make_pair(encSubseqCom[8], make_pair(encSubseqCom[9],
+						    make_pair(encSubseqCom[10], make_pair(encSubseqCom[11],
+						    make_pair(encSubseqCom[12], make_pair(encSubseqCom[13],
+						    make_pair(encSubseqCom[14], encSubseqCom[15])))))))))))))))) != reference.end() ) {
+					// Possible to compress, then store the current index
+					currIndex = reference.at(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
+								 make_pair(encSubseqCom[2], make_pair(encSubseqCom[3],
+								 make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
+								 make_pair(encSubseqCom[6], make_pair(encSubseqCom[7],
+								 make_pair(encSubseqCom[8], make_pair(encSubseqCom[9],
+								 make_pair(encSubseqCom[10], make_pair(encSubseqCom[11],
+								 make_pair(encSubseqCom[12], make_pair(encSubseqCom[13],
+								 make_pair(encSubseqCom[14], encSubseqCom[15]))))))))))))))));
+					// Compare the current index with the previous one
+					if ( seqSizeCmpP != 0 ) {
+						if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+					}
+					// Update the parameters
+					prevIndex = currIndex;
+					seqSizeCmpP ++;
+					start += KMERLENGTH;
+				} else {
+					seqSizeCmpN ++;
+					start += stride;
+				}
+			}
+		}
+		// Handle remainder
+		uint64_t remainder = sequences[seqIdx].size() - start;
+		if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
+		// Check the progress
+		if ( seqIdx % 1000 == 0 ) {
+			printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", seqIdx, sequences.size() );
+			fflush( stdout );
+		}
+	}
+	// Terminate
+	printf( "[STEP 3] Compressing the sequences is done!\n" );
+	printf( "---------------------------------------------------------------------\n" );
+	fflush( stdout );
+}
+// Compressor [WHOLE UNIT]
+void compressor_unit_wh( const uint64_t stride ) {
+	uint32_t prevIndex = 0;
+	uint32_t currIndex = 0;
+	uint64_t start = 0;
+	while ( start <= sequence.size() - KMERLENGTH ) {
+		// Get subsequence
+		string subseq = sequence.substr(start, KMERLENGTH);
+		string subseqOrg = subseq;
+		reverse(subseq.begin(), subseq.end());
+		string subseqRev = subseq;
+		// Get reverse complement
+		string subseqCom;
+		complementer(subseqRev, subseqCom);
+		// Encode original subsequence first
+		uint64_t encSubseqOrg[ENCKMERBUFSIZE] = {0, };
+		encoder(subseqOrg, encSubseqOrg);
+		// Check possible to compress
+		if ( reference.find(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
+				    make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
+				    make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+				    make_pair(encSubseqOrg[6], make_pair(encSubseqOrg[7],
+				    make_pair(encSubseqOrg[8], make_pair(encSubseqOrg[9],
+				    make_pair(encSubseqOrg[10], make_pair(encSubseqOrg[11],
+				    make_pair(encSubseqOrg[12], make_pair(encSubseqOrg[13],
+				    make_pair(encSubseqOrg[14], encSubseqOrg[15])))))))))))))))) != reference.end() ) {
+			// Possible to compress, then store the current index
+			currIndex = reference.at(make_pair(encSubseqOrg[0], make_pair(encSubseqOrg[1], 
+						 make_pair(encSubseqOrg[2], make_pair(encSubseqOrg[3], 
+						 make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
+						 make_pair(encSubseqOrg[6], make_pair(encSubseqOrg[7],
+						 make_pair(encSubseqOrg[8], make_pair(encSubseqOrg[9],
+						 make_pair(encSubseqOrg[10], make_pair(encSubseqOrg[11],
+						 make_pair(encSubseqOrg[12], make_pair(encSubseqOrg[13],
+						 make_pair(encSubseqOrg[14], encSubseqOrg[15]))))))))))))))));
+			// Compare the current index to the previous one
+			if ( seqSizeCmpP != 0 ) {
+				if ( currIndex == prevIndex + KMERLENGTH ) {
+					seqSizeCmpI ++;
+				}
+			}
+			// Update the parameters
+			prevIndex = currIndex;
+			seqSizeCmpP ++;
+			start += KMERLENGTH;
+		} else {
+			// Encode reverse complement
+			uint64_t encSubseqCom[ENCKMERBUFSIZE] = {0, };
+			encoder(subseqCom, encSubseqCom);
+			// Check possible to compress
+			if ( reference.find(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
+					    make_pair(encSubseqCom[2], make_pair(encSubseqCom[3], 
+					    make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
+					    make_pair(encSubseqCom[6], make_pair(encSubseqCom[7],
+					    make_pair(encSubseqCom[8], make_pair(encSubseqCom[9],
+					    make_pair(encSubseqCom[10], make_pair(encSubseqCom[11],
+					    make_pair(encSubseqCom[12], make_pair(encSubseqCom[13],
+					    make_pair(encSubseqCom[14], encSubseqCom[15])))))))))))))))) != reference.end() ) {
+				// Possible to compress, then store the current index
+				currIndex = reference.at(make_pair(encSubseqCom[0], make_pair(encSubseqCom[1], 
+							 make_pair(encSubseqCom[2], make_pair(encSubseqCom[3],
+							 make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
+							 make_pair(encSubseqCom[6], make_pair(encSubseqCom[7],
+							 make_pair(encSubseqCom[8], make_pair(encSubseqCom[9],
+							 make_pair(encSubseqCom[10], make_pair(encSubseqCom[11],
+							 make_pair(encSubseqCom[12], make_pair(encSubseqCom[13],
+							 make_pair(encSubseqCom[14], encSubseqCom[15]))))))))))))))));
+				// Compare the current index with the previous one
+				if ( seqSizeCmpP != 0 ) {
+					if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+				}
+				// Update the parameters
+				prevIndex = currIndex;
 				seqSizeCmpP ++;
 				start += KMERLENGTH;
 			} else {
@@ -140,56 +342,71 @@ void compressor( const uint64_t stride ) {
 				start += stride;
 			}
 		}
-		// Handle remainder
-		uint64_t remainder = sequences[seqIdx].size() - start;
-		if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
-
-		printf( "Compressing #%lu Sequences is Done!\n", seqIdx );
-		fflush( stdout );
+		// Check the progress
+		if ( start % 1000000 == 0 ) {
+			printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", start, sequence.size() );
+			fflush( stdout );
+		}
 	}
+	// Handle remainder
+	uint64_t remainder = sequence.size() - start;
+	if ( remainder > 0 ) seqSizeRmnd += (remainder * 2) + 1;
+	// Terminate
+	printf( "[STEP 3] Compressing the sequences is done!\n" );
+	printf( "---------------------------------------------------------------------\n" );
+	fflush( stdout );
 }
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/hg16.fasta";
-	char *filenameR = "/home/jovyan/hg19RefBook512MersFrom1.bin";
+	char *filenameS = "/mnt/ephemeral/hg002_rep1_sub.fastq";
+	char *filenameR = "/mnt/ephemeral/hg19Reference512MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
-	seqReader( filenameS );
+	seqReaderFASTQ( filenameS );
 
 	// Read reference file
 	refReader( filenameR );
 
 	// Compression
 	for ( uint64_t stride = 1; stride < 1024; stride = stride * 2 ) {
-		uint64_t refCompIndexN = 1 + stride * 2;
-		uint64_t refCompIndexP = 1 + 32;
-
+		// Variable initialization
 		seqSizeCmpN = 0;
+		seqSizeCmpI = 0;
 		seqSizeCmpP = 0;
 		seqSizeRmnd = 0;
-
+		// Compress
 		double processStart = timeChecker();
-		compressor( stride );
+		if ( CHROMOSOMEUNIT ) compressor_unit_ch( stride );
+		else compressor_unit_wh( stride );
 		double processFinish = timeChecker();
 		double elapsedTime = processFinish - processStart;
-
 		// Results
-		printf( "--------------------------------------------\n" );
 		printf( "REFERENCE\n" );
-		printf( "The Length of K-Mer: %lu\n", KMERLENGTH );
+		printf( "The Length of K-Mer: %d\n", KMERLENGTH );
 		printf( "The Number of K-Mer: %lu\n", refSizeUsd );
-		printf( "--------------------------------------------\n" );
+		printf( "---------------------------------------------------------------------\n" );
 		printf( "SEQUENCE\n" );
 		printf( "The Number of Base Pair : %lu\n", seqSizeOrg );
-		printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024 / 1024 / 4 );
-		printf( "--------------------------------------------\n" );
+		printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024.00 / 1024.00 / 4.00 );
+		printf( "---------------------------------------------------------------------\n" );
 		printf( "COMPRESSION RESULT\n" );
 		printf( "Stride                  : %lu\n", stride );
 		printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
-		printf( "The Compressed File Size: %0.4f MB\n", 
-		     	(double)((seqSizeCmpN * refCompIndexN) + (seqSizeCmpP * refCompIndexP) + seqSizeRmnd) / 8 / 1024 / 1024 );
+		if ( GROUPVARINT ) {
+			uint64_t refCompN = (2 + (stride * 2)) * seqSizeCmpN;
+			uint64_t refCompP = (2 * seqSizeCmpP) + (32 * (seqSizeCmpP - seqSizeCmpI));
+			printf( "The Compressed File Size: %0.4f MB\n", 
+			     	((double)refCompN + (double)refCompP + (double)seqSizeRmnd) / 8.00 / 1024.00 / 1024.00 );
+			printf( "Sequential Percentage   : %0.4f\n", ((double)seqSizeCmpI / (double)seqSizeCmpP) * 100.00 );
+		} else {
+			uint64_t refCompN = (1 + (stride * 2)) * seqSizeCmpN;
+			uint64_t refCompP = (1 * seqSizeCmpP) + (32 * seqSizeCmpP);
+			printf( "The Compressed File Size: %0.4f MB\n", 
+			     	((double)refCompN + (double)refCompP + (double)seqSizeRmnd) / 8.00 / 1024.00 / 1024.00 );
+		}
 		printf( "Elapsed Time: %lf\n", elapsedTime );
+		printf( "---------------------------------------------------------------------\n" );
 	}
 
 	return 0;
