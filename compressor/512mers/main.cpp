@@ -20,6 +20,7 @@ using namespace std;
 #define BINARYRWUNIT 8
 #define CHROMOSOMEUNIT 1
 #define GROUPVARINT 1
+#define FASTQ 1
 
 
 string sequence;
@@ -174,7 +175,7 @@ void compressor_unit_ch( const uint64_t stride ) {
 	uint32_t currIndex = 0;
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
-		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
+		while ( (double)start <= (double)sequences[seqIdx].size() - (double)KMERLENGTH ) {
 			// Get subsequence
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
 			string subseqOrg = subseq;
@@ -365,11 +366,12 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/sequence/HG002_1_SRR10382244_SUB.fastq";
+	char *filenameS = "/mnt/ephemeral/sequence/HG002_SUB.fastq";
 	char *filenameR = "/mnt/ephemeral/reference/HG19Reference512MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
-	seqReaderFASTQ( filenameS );
+	if ( FASTQ ) seqReaderFASTQ( filenameS );
+	else seqReaderFASTA( filenameS );
 
 	// Read reference file
 	refReader( filenameR );
