@@ -182,7 +182,9 @@ void compressor_unit_ch( const uint64_t stride ) {
 				currIndex = reference.at(make_pair(encSubseqOrg[0], encSubseqOrg[1]));
 				// Compare the current index with the previous one
 				if ( seqSizeCmpP != 0 ) {
-					if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+					if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
+						seqSizeCmpI ++;
+					}
 				}
 				// Update the parameters
 				prevIndex = currIndex;
@@ -198,7 +200,9 @@ void compressor_unit_ch( const uint64_t stride ) {
 					currIndex = reference.at(make_pair(encSubseqCom[0], encSubseqCom[1]));
 					// Compare the current index with the previous one
 					if ( seqSizeCmpP != 0 ) {
-						if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+						if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
+							seqSizeCmpI ++;
+						}
 					}
 					// Update the parameters
 					prevIndex = currIndex;
@@ -247,7 +251,7 @@ void compressor_unit_wh( const uint64_t stride ) {
 			currIndex = reference.at(make_pair(encSubseqOrg[0], encSubseqOrg[1]));
 			// Compare the current index to the previous one
 			if ( seqSizeCmpP != 0 ) {
-				if ( currIndex == prevIndex + KMERLENGTH ) {
+				if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
 					seqSizeCmpI ++;
 				}
 			}
@@ -265,7 +269,9 @@ void compressor_unit_wh( const uint64_t stride ) {
 				currIndex = reference.at(make_pair(encSubseqCom[0], encSubseqCom[1]));
 				// Compare the current index with the previous one
 				if ( seqSizeCmpP != 0 ) {
-					if ( currIndex == prevIndex + KMERLENGTH ) seqSizeCmpI ++;
+					if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex + KMERLENGTH) ) {
+						seqSizeCmpI ++;
+					}
 				}
 				// Update the parameters
 				prevIndex = currIndex;
@@ -293,8 +299,8 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/hg002_rep1_sub.fastq";
-	char *filenameR = "/mnt/ephemeral/hg19Reference64MersFrom1IndexIncluded.bin";
+	char *filenameS = "/mnt/ephemeral/sequence/HG002_1_SRR10382244_SUB.fastq";
+	char *filenameR = "/mnt/ephemeral/reference/HG19Reference064MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
 	seqReaderFASTQ( filenameS );
