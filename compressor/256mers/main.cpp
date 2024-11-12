@@ -169,7 +169,7 @@ void compressor_unit_ch( const uint64_t stride ) {
 	uint32_t currIndex = 0;
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
-		while ( start <= sequences[seqIdx].size() - KMERLENGTH ) {
+		while ( (double)start <= (double)sequences[seqIdx].size() - (double)KMERLENGTH ) {
 			// Get subsequence
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
 			string subseqOrg = subseq;
@@ -328,8 +328,8 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/HG002_1_SRR10382244_SUB.fastq";
-	char *filenameR = "/mnt/ephemeral/HG19Reference256MersFrom1IndexIncluded.bin";
+	char *filenameS = "/mnt/ephemeral/sequence/HG002_SUB.fastq";
+	char *filenameR = "/mnt/ephemeral/reference/HG19Reference256MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
 	seqReaderFASTQ( filenameS );
