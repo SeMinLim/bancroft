@@ -14,7 +14,7 @@
 using namespace std;
 
 
-#define FASTA 1
+#define FASTA 0
 
 
 uint64_t seqSizeOrg = 0;;
