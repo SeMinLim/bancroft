@@ -328,8 +328,8 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/hg002_rep1_sub.fastq";
-	char *filenameR = "/mnt/ephemeral/hg19Reference256MersFrom1IndexIncluded.bin";
+	char *filenameS = "/mnt/ephemeral/HG002_1_SRR10382244_SUB.fastq";
+	char *filenameR = "/mnt/ephemeral/HG19Reference256MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
 	seqReaderFASTQ( filenameS );
