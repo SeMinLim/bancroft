@@ -20,6 +20,7 @@ using namespace std;
 #define BINARYRWUNIT 8
 #define CHROMOSOMEUNIT 1
 #define GROUPVARINT 1
+#define FASTQ 1
 
 
 string sequence;
@@ -332,7 +333,8 @@ int main( int argc, char **argv ) {
 	char *filenameR = "/mnt/ephemeral/reference/HG19Reference256MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
-	seqReaderFASTQ( filenameS );
+	if ( FASTQ ) seqReaderFASTQ( filenameS );
+	else seqReaderFASTA( filenameS );
 
 	// Read reference file
 	refReader( filenameR );
