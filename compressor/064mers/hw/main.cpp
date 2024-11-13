@@ -358,7 +358,6 @@ void compressor_unit_wh( const uint64_t stride ) {
 					pckt = currIndex;
 					currPckt = 1;
 					pcktCount ++;
-					
 				}
 			} else { // [JUST MATCH]
 				// Head
