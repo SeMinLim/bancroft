@@ -37,8 +37,8 @@ uint64_t seqSizeRmnd = 0;
 
 
 // Reference: hg19From1
-uint64_t refSizeOrg = 2849207900;
-uint64_t refSizeUsd = 2849207900;
+uint64_t refSizeOrg = 2831049742;
+uint64_t refSizeUsd = 2831049742;
 
 
 // Required Functions

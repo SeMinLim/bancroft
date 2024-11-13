@@ -42,8 +42,8 @@ uint64_t seqSizeRmnd = 0;
 
 
 // Reference: hg19From1
-uint64_t refSizeOrg = 2849207900;
-uint64_t refSizeUsd = 2849207900;
+uint64_t refSizeOrg = 2831049742;
+uint64_t refSizeUsd = 2831049742;
 
 
 // Required Functions
@@ -458,9 +458,9 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/sequence/HG002_SUB.fastq";
+	char *filenameS = "/mnt/ephemeral/sequence/HG003_SUB.fastq";
 	char *filenameR = "/mnt/ephemeral/reference/HG19Reference128MersFrom1IndexIncluded.bin";
-	char *filenameC = "/mnt/ephemeral/compressed/HG002_SUB_COMP.bin";
+	char *filenameC = "/mnt/ephemeral/compressed/HG003_SUB_COMP.bin";
 
 	// Read sequence file
 	if ( FASTQ ) seqReaderFASTQ( filenameS );
