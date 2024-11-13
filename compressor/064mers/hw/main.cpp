@@ -315,10 +315,21 @@ void compressor_unit_ch( const uint64_t stride ) {
 }
 // Compressor [WHOLE UNIT]
 void compressor_unit_wh( const uint64_t stride ) {
+	// Head
+	uint32_t head = 0;
+	uint32_t currHead = 0;
+	uint64_t headCount = 0;
+	// Packet
+	uint32_t pckt = 0;
+	uint32_t currPckt = 0;
+	uint64_t pcktCount = 0;
+	// GroupVarInt
 	uint32_t prevIndex = 0;
 	uint32_t currIndex = 0;
 	uint64_t start = 0;
 	while ( start <= sequence.size() - KMERLENGTH ) {
+		currHead = 0;
+		currPckt = 0;
 		// Get subsequence
 		string subseq = sequence.substr(start, KMERLENGTH);
 		string subseqOrg = subseq;
@@ -335,10 +346,27 @@ void compressor_unit_wh( const uint64_t stride ) {
 			// Possible to compress, then store the current index
 			currIndex = reference.at(make_pair(encSubseqOrg[0], encSubseqOrg[1]));
 			// Compare the current index to the previous one
-			if ( seqSizeCmpP != 0 ) {
+			if ( seqSizeCmpP != 0 ) { // [CONTINUOUS MATCH]
 				if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
 					seqSizeCmpI ++;
+					// Head
+					currHead = 2;
+				} else { // [JUST MATCH]
+					// Head
+					currHead = 1;
+					// Packet
+					pckt = currIndex;
+					currPckt = 1;
+					pcktCount ++;
+					
 				}
+			} else { // [JUST MATCH]
+				// Head
+				currHead = 1;
+				// Packet
+				pckt = currIndex;
+				currPckt = 1;
+				pcktCount ++;
 			}
 			// Update the parameters
 			prevIndex = currIndex;
@@ -356,17 +384,53 @@ void compressor_unit_wh( const uint64_t stride ) {
 				if ( seqSizeCmpP != 0 ) {
 					if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex + KMERLENGTH) ) {
 						seqSizeCmpI ++;
+					} else {
+						// Packet
+						pckt = currIndex;
+						currPckt = 1;
+						pcktCount ++;
 					}
+				} else {
+					// Packet
+					pckt = currIndex;
+					currPckt = 1;
+					pcktCount ++;
 				}
+				// [REVERSE MATCH]
+				currHead = 3;
 				// Update the parameters
 				prevIndex = currIndex;
 				seqSizeCmpP ++;
 				start += KMERLENGTH;
 			} else {
+				// [NOT MATCH]
+				// Header
+				currHead = 0;
+				// Packet
+				string verbatimOrg = sequence.substr(start, stride);
+				pckt = encoderVerbatim(verbatimOrg, stride);
+				currPckt = 1;
+				pcktCount ++;
+				// Update the parameters
 				seqSizeCmpN ++;
 				start += stride;
 			}
 		}
+		// Update header vector
+		head = head | (currHead << (headCount * 2));
+		if ( headCount == 15 ) {
+			// Header
+			header.push_back(head);
+			headCount = 0;
+			head = 0;
+			// Number of packet
+			pknumb.push_back(pcktCount);
+			pcktCount = 0;
+		} else {
+			headCount ++;
+		}
+		// Update packet vector
+		if ( currPckt == 1 ) packet.push_back(pckt);
 		// Check the progress
 		if ( start % 1000000 == 0 ) {
 			printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", start, sequence.size() );
