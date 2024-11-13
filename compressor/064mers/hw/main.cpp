@@ -30,6 +30,7 @@ map<pair<uint64_t, uint64_t>, uint32_t> reference;
 
 vector<uint32_t> header;
 vector<uint32_t> packet;
+vector<uint64_t> pknumb;
 
 
 uint64_t seqSizeOrg = 0;
@@ -141,21 +142,21 @@ void encoderKmer( string seqLine, uint64_t *encKmer ) {
 		}
 	}
 }
-uint32_t encoderVerbatim( string verbatim, uint64_t stride ) {
-	uint32_t encVerbatim = 0;
+uint32_t encoderVerbatim( string verbatimOrg, uint64_t stride ) {
+	uint32_t verbatimEnc = 0;
 	for ( uint64_t i = 0; i < stride; i ++ ) {
-		if ( verbatim[i] == 'A' ) {
-			encVerbatim = ((uint32_t)0 << 2 * i) | encVerbatim;
-		} else if ( verbatim[i] == 'C' ) {
-			encVerbatim = ((uint32_t)1 << 2 * i) | encVerbatim;
-		} else if ( verbatim[i] == 'G' ) {
-			encVerbatim = ((uint32_t)2 << 2 * i) | encVerbatim;
-		} else if ( verbatim[i] == 'T' ) {
-			encVerbatim = ((uint32_t)3 << 2 * i) | encVerbatim;
+		if ( verbatimOrg[i] == 'A' ) {
+			verbatimEnc = ((uint32_t)0 << 2 * i) | verbatimEnc;
+		} else if ( verbatimOrg[i] == 'C' ) {
+			verbatimEnc = ((uint32_t)1 << 2 * i) | verbatimEnc;
+		} else if ( verbatimOrg[i] == 'G' ) {
+			verbatimEnc = ((uint32_t)2 << 2 * i) | verbatimEnc;
+		} else if ( verbatimOrg[i] == 'T' ) {
+			verbatimEnc = ((uint32_t)3 << 2 * i) | verbatimEnc;
 		}
 	}
-
-	return encVerbatim;
+	// Terminate
+	return verbatimEnc;
 }
 // 2-bit Decoder
 void decoder( const uint64_t *encKmer, string &seqLine ) {
@@ -181,16 +182,22 @@ void complementer( string reversed, string &complemented ) {
 }
 // Compressor [CHROMOSOME UNIT]
 void compressor_unit_ch( const uint64_t stride ) {
+	// Head
 	uint32_t head = 0;
-	uint32_t pckt = 0;
+	uint32_t currHead = 0;
 	uint64_t headCount = 0;
+	// Packet
+	uint32_t pckt = 0;
+	uint32_t currPckt = 0;
 	uint64_t pcktCount = 0;
+	// GroupVarInt
 	uint32_t prevIndex = 0;
 	uint32_t currIndex = 0;
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
 		uint64_t start = 0;
 		while ( (double)start <= (double)sequences[seqIdx].size() - (double)KMERLENGTH ) {
-			uint32_t currHead = 0;
+			currHead = 0;
+			currPckt = 0;
 			// Get subsequence
 			string subseq = sequences[seqIdx].substr(start, KMERLENGTH);
 			string subseqOrg = subseq;
@@ -210,14 +217,23 @@ void compressor_unit_ch( const uint64_t stride ) {
 				if ( seqSizeCmpP != 0 ) { // [CONTINUOUS MATCH]
 					if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
 						seqSizeCmpI ++;
+						// Head
 						currHead = 2;
 					} else { // [JUST MATCH]
+						// Head
 						currHead = 1;
-						currPckt = currIndex;
+						// Packet
+						pckt = currIndex;
+						currPckt = 1;
+						pcktCount ++;
 					}
 				} else { // [JUST MATCH]
+					// Head
 					currHead = 1;
-					currPckt = currIndex;
+					// Packet
+					pckt = currIndex;
+					currPckt = 1;
+					pcktCount ++;
 				}
 				// Update the parameters
 				prevIndex = currIndex;
@@ -236,10 +252,16 @@ void compressor_unit_ch( const uint64_t stride ) {
 						if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
 							seqSizeCmpI ++;
 						} else {
-							currPckt = currIndex;
+							// Packet
+							pckt = currIndex;
+							currPckt = 1;
+							pcktCount ++;
 						}
 					} else {
-						currPckt = currIndex;
+						// Packet
+						pckt = currIndex;
+						currPckt = 1;
+						pcktCount ++;
 					}
 					// [REVERSE MATCH]
 					currHead = 3;
@@ -248,10 +270,14 @@ void compressor_unit_ch( const uint64_t stride ) {
 					seqSizeCmpP ++;
 					start += KMERLENGTH;
 				} else {
-					verbatimOrg = sequences[seqIdx].substr(start, stride);
-					pckt = encoderVerbatim(verbatimOrg, stride);
 					// [NOT MATCH]
+					// Header
 					currHead = 0;
+					// Packet
+					string verbatimOrg = sequences[seqIdx].substr(start, stride);
+					pckt = encoderVerbatim(verbatimOrg, stride);
+					currPckt = 1;
+					pcktCount ++;
 					// Update the parameters
 					seqSizeCmpN ++;
 					start += stride;
@@ -260,14 +286,18 @@ void compressor_unit_ch( const uint64_t stride ) {
 			// Update header vector
 			head = head | (currHead << (headCount * 2));
 			if ( headCount == 15 ) {
+				// Header
 				header.push_back(head);
 				headCount = 0;
 				head = 0;
+				// Number of packet
+				pknumb.push_back(pcktCount);
+				pcktCount = 0;
 			} else {
 				headCount ++;
 			}
 			// Update packet vector
-			packer.push_back(pckt);
+			if ( currPckt == 1 ) packet.push_back(pckt);
 		}
 		// Handle remainder
 		uint64_t remainder = sequences[seqIdx].size() - start;
@@ -356,6 +386,7 @@ void compressor_unit_wh( const uint64_t stride ) {
 int main( int argc, char **argv ) {
 	char *filenameS = "/mnt/ephemeral/sequence/HG002_SUB.fastq";
 	char *filenameR = "/mnt/ephemeral/reference/HG19Reference064MersFrom1IndexIncluded.bin";
+	char *filenameC = "/mnt/ephemeral/compressed/HG002_SUB_COMP.bin";
 
 	// Read sequence file
 	if ( FASTQ ) seqReaderFASTQ( filenameS );
@@ -365,45 +396,55 @@ int main( int argc, char **argv ) {
 	refReader( filenameR );
 
 	// Compression
-	for ( uint64_t stride = 1; stride < 128; stride = stride * 2 ) {
-		// Variable initialization
-		seqSizeCmpN = 0;
-		seqSizeCmpI = 0;
-		seqSizeCmpP = 0;
-		seqSizeRmnd = 0;
-		// Compress
-		double processStart = timeChecker();
-		if ( CHROMOSOMEUNIT ) compressor_unit_ch( stride );
-		else compressor_unit_wh( stride );
-		double processFinish = timeChecker();
-		double elapsedTime = processFinish - processStart;
-		// Results
-		printf( "REFERENCE\n" );
-		printf( "The Length of K-Mer: %d\n", KMERLENGTH );
-		printf( "The Number of K-Mer: %lu\n", refSizeUsd );
-		printf( "---------------------------------------------------------------------\n" );
-		printf( "SEQUENCE\n" );
-		printf( "The Number of Base Pair : %lu\n", seqSizeOrg );
-		printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024.00 / 1024.00 / 4.00 );
-		printf( "---------------------------------------------------------------------\n" );
-		printf( "COMPRESSION RESULT\n" );
-		printf( "Stride                  : %lu\n", stride );
-		printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
-		if ( GROUPVARINT ) {
-			uint64_t refCompN = (2 + (stride * 2)) * seqSizeCmpN;
-			uint64_t refCompP = (2 * seqSizeCmpP) + (32 * (seqSizeCmpP - seqSizeCmpI));
-			printf( "The Compressed File Size: %0.4f MB\n", 
-			     	((double)refCompN + (double)refCompP + (double)seqSizeRmnd) / 8.00 / 1024.00 / 1024.00 );
-			printf( "Sequential Percentage   : %0.4f\n", ((double)seqSizeCmpI / (double)seqSizeCmpP) * 100.00 );
-		} else {
-			uint64_t refCompN = (1 + (stride * 2)) * seqSizeCmpN;
-			uint64_t refCompP = (1 * seqSizeCmpP) + (32 * seqSizeCmpP);
-			printf( "The Compressed File Size: %0.4f MB\n", 
-			     	((double)refCompN + (double)refCompP + (double)seqSizeRmnd) / 8.00 / 1024.00 / 1024.00 );
+	uint64_t stride = 16;	
+	// Variable initialization
+	seqSizeCmpN = 0;
+	seqSizeCmpI = 0;
+	seqSizeCmpP = 0;
+	seqSizeRmnd = 0;
+	// Compress
+	double processStart = timeChecker();
+	if ( CHROMOSOMEUNIT ) compressor_unit_ch( stride );
+	else compressor_unit_wh( stride );
+	double processFinish = timeChecker();
+	double elapsedTime = processFinish - processStart;
+	// Compressed Sequence
+	uint64_t pointer = 0;
+	ofstream f_result( filenameC, ios::binary );
+	for ( uint64_t i = 0; i < header.size(); i ++ ) {
+		f_result.write(reinterpret_cast<char *>(&header[i]), 4);
+		for ( uint64_t j = 0; j < pknumb[i]; j ++ ) {
+			f_result.write(reinterpret_cast<char *>(&packet[pointer]), 4);
+			pointer ++;
 		}
-		printf( "Elapsed Time: %lf\n", elapsedTime );
-		printf( "---------------------------------------------------------------------\n" );
 	}
+	f_result.close();
+	// Results
+	printf( "REFERENCE\n" );
+	printf( "The Length of K-Mer: %d\n", KMERLENGTH );
+	printf( "The Number of K-Mer: %lu\n", refSizeUsd );
+	printf( "---------------------------------------------------------------------\n" );
+	printf( "SEQUENCE\n" );
+	printf( "The Number of Base Pair : %lu\n", seqSizeOrg );
+	printf( "The Original File Size  : %0.4f MB\n", (double)seqSizeOrg / 1024.00 / 1024.00 / 4.00 );
+	printf( "---------------------------------------------------------------------\n" );
+	printf( "COMPRESSION RESULT\n" );
+	printf( "Stride                  : %lu\n", stride );
+	printf( "The Number of Base Pair : %lu\n", seqSizeCmpP * KMERLENGTH );
+	if ( GROUPVARINT ) {
+		uint64_t refCompN = (2 + (stride * 2)) * seqSizeCmpN;
+		uint64_t refCompP = (2 * seqSizeCmpP) + (32 * (seqSizeCmpP - seqSizeCmpI));
+		printf( "The Compressed File Size: %0.4f MB\n", 
+		     	((double)refCompN + (double)refCompP + (double)seqSizeRmnd) / 8.00 / 1024.00 / 1024.00 );
+		printf( "Sequential Percentage   : %0.4f\n", ((double)seqSizeCmpI / (double)seqSizeCmpP) * 100.00 );
+	} else {
+		uint64_t refCompN = (1 + (stride * 2)) * seqSizeCmpN;
+		uint64_t refCompP = (1 * seqSizeCmpP) + (32 * seqSizeCmpP);
+		printf( "The Compressed File Size: %0.4f MB\n", 
+		     	((double)refCompN + (double)refCompP + (double)seqSizeRmnd) / 8.00 / 1024.00 / 1024.00 );
+	}
+	printf( "Elapsed Time: %lf\n", elapsedTime );
+	printf( "---------------------------------------------------------------------\n" );
 
 	return 0;
 }
