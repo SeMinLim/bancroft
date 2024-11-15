@@ -225,12 +225,12 @@ void compressor_unit_ch( const uint64_t stride ) {
 							 make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
 							 make_pair(encSubseqOrg[6], encSubseqOrg[7]))))))));
 				// Compare the current index with the previous one
-				if ( seqSizeCmpP != 0 ) { // [CONTINUOUS MATCH]
-					if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
+				if ( seqSizeCmpP != 0 ) { // [FORWARD CONTINUOUS MATCH]
+					if ( currIndex == prevIndex + KMERLENGTH ) {
 						seqSizeCmpI ++;
 						// Head
 						currHead = 2;
-					} else { // [JUST MATCH]
+					} else { // [FORWARD NORMAL MATCH]
 						// Head
 						currHead = 1;
 						// Packet
@@ -238,7 +238,7 @@ void compressor_unit_ch( const uint64_t stride ) {
 						currPckt = 1;
 						pcktCount ++;
 					}
-				} else { // [JUST MATCH]
+				} else { // [FORWARD NORMAL MATCH]
 					// Head
 					currHead = 1;
 					// Packet
@@ -265,30 +265,34 @@ void compressor_unit_ch( const uint64_t stride ) {
 								 make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
 								 make_pair(encSubseqCom[6], encSubseqCom[7]))))))));
 					// Compare the current index with the previous one
-					if ( seqSizeCmpP != 0 ) {
-						if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
+					if ( seqSizeCmpP != 0 ) { // [REVERSE CONTINUOUS MATCH]
+						if ( currIndex == prevIndex - KMERLENGTH ) {
 							seqSizeCmpI ++;
-						} else {
+							// Head
+							currHead = 2;
+						} else { // [REVERSE NORMAL MATCH]
+							// Head
+							currHead = 3;
 							// Packet
 							pckt = currIndex;
 							currPckt = 1;
 							pcktCount ++;
 						}
-					} else {
+					} else { // [REVERSE NORMAL MATCH]
+						// Head
+						currHead = 3;
 						// Packet
 						pckt = currIndex;
 						currPckt = 1;
 						pcktCount ++;
 					}
-					// [REVERSE MATCH]
-					currHead = 3;
 					// Update the parameters
 					prevIndex = currIndex;
 					seqSizeCmpP ++;
 					start += KMERLENGTH;
 				} else {
 					// [NOT MATCH]
-					// Header
+					// Head
 					currHead = 0;
 					// Packet
 					string verbatimOrg = sequences[seqIdx].substr(start, stride);
@@ -369,12 +373,12 @@ void compressor_unit_wh( const uint64_t stride ) {
 						 make_pair(encSubseqOrg[4], make_pair(encSubseqOrg[5], 
 						 make_pair(encSubseqOrg[6], encSubseqOrg[7]))))))));
 			// Compare the current index to the previous one
-			if ( seqSizeCmpP != 0 ) { // [CONTINUOUS MATCH]
-				if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
+			if ( seqSizeCmpP != 0 ) { // [FORWARD CONTINUOUS MATCH]
+				if ( currIndex == prevIndex + KMERLENGTH ) {
 					seqSizeCmpI ++;
 					// Head
 					currHead = 2;
-				} else { // [JUST MATCH]
+				} else { // [FORWARD NORMAL MATCH]
 					// Head
 					currHead = 1;
 					// Packet
@@ -382,7 +386,7 @@ void compressor_unit_wh( const uint64_t stride ) {
 					currPckt = 1;
 					pcktCount ++;
 				}
-			} else { // [JUST MATCH]
+			} else { // [FORWARD NORMAL MATCH]
 				// Head
 				currHead = 1;
 				// Packet
@@ -409,30 +413,34 @@ void compressor_unit_wh( const uint64_t stride ) {
 							 make_pair(encSubseqCom[4], make_pair(encSubseqCom[5],
 							 make_pair(encSubseqCom[6], encSubseqCom[7]))))))));
 				// Compare the current index with the previous one
-				if ( seqSizeCmpP != 0 ) {
-					if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
+				if ( seqSizeCmpP != 0 ) { // [REVERSE CONTINUOUS MATCH]
+					if ( currIndex == prevIndex - KMERLENGTH ) {
 						seqSizeCmpI ++;
-					} else {
+						// Head
+						currHead = 2;
+					} else { // [REVERSE NORMAL MATCH]
+						// Head
+						currHead = 3;
 						// Packet
 						pckt = currIndex;
 						currPckt = 1;
 						pcktCount ++;
 					}
-				} else {
+				} else { // [REVERSE NORMAL MATCH]
+					// Head
+					currHead = 3;
 					// Packet
 					pckt = currIndex;
 					currPckt = 1;
 					pcktCount ++;
 				}
-				// [REVERSE MATCH]
-				currHead = 3;
 				// Update the parameters
 				prevIndex = currIndex;
 				seqSizeCmpP ++;
 				start += KMERLENGTH;
 			} else {
 				// [NOT MATCH]
-				// Header
+				// Head
 				currHead = 0;
 				// Packet
 				string verbatimOrg = sequence.substr(start, stride);
@@ -476,9 +484,9 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/sequence/HG002_SUB.fastq";
+	char *filenameS = "/mnt/ephemeral/sequence/HG003_SUB.fastq";
 	char *filenameR = "/mnt/ephemeral/reference/HG19Reference256MersFrom1IndexIncluded.bin";
-	char *filenameC = "/mnt/ephemeral/compressed/HG002_SUB_COMP.bin";
+	char *filenameC = "/mnt/ephemeral/compressed/HG003_SUB_COMP.bin";
 
 	// Read sequence file
 	if ( FASTQ ) seqReaderFASTQ( filenameS );
@@ -536,6 +544,9 @@ int main( int argc, char **argv ) {
 		     	((double)refCompN + (double)refCompP + (double)seqSizeRmnd) / 8.00 / 1024.00 / 1024.00 );
 	}
 	printf( "Elapsed Time: %lf\n", elapsedTime );
+	printf( "---------------------------------------------------------------------\n" );
+	printf( "The Number of 32-bit Header: %lu\n", header.size() );
+	printf( "The Number of 32-bit Packet: %lu\n", packet.size() );
 	printf( "---------------------------------------------------------------------\n" );
 
 	return 0;
