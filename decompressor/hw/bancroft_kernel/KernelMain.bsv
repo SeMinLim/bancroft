@@ -10,8 +10,6 @@ typedef 29111534 PcktCntTotal32b;
 typedef 1819471  PcktCntTotal512b;
 typedef 1 RsltCntTotal128b;
 typedef 1 RsltCntTotal512b;
-typedef 128 	 Kval;
-typedef 128 	 Wval;
 typedef 2 	 MemPortCnt;
 typedef struct {
 	Bit#(64) addr;
