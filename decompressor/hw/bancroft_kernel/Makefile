@@ -4,7 +4,7 @@ BSCFLAGS = -show-schedule -aggressive-conditions
 BSCFLAGS_SYNTH = -bdir ./obj -vdir ./obj/verilog -simdir ./obj -info-dir ./obj -fdir ./obj 
 TARGET := hw
 BUILD_DIR := ../$(TARGET)
-BLIB_DIR = $(ROOT_DIR)/../bluelib/src
+BLIB_DIR = $(ROOT_DIR)/../../bluelib/src
 
 .PHONY: all verilog
 
