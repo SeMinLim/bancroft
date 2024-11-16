@@ -8,8 +8,9 @@ import Decompressor::*;
 typedef 64 	 Kmer;
 typedef 29111534 PcktCntTotal32b;
 typedef 1819471  PcktCntTotal512b;
-typedef 1 RsltCntTotal128b;
-typedef 1 RsltCntTotal512b;
+typedef 17990662 RsltCntTotal32b;
+typedef 41481157 RsltCntTotal128b;
+typedef 11494706 RsltCntTotal512b;
 typedef 2 	 MemPortCnt;
 typedef struct {
 	Bit#(64) addr;
