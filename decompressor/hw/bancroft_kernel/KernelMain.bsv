@@ -5,13 +5,16 @@ import Vector::*;
 import Decompressor::*;
 
 
-typedef 64 	 Kmer;
-typedef 29111534 PcktCntTotal32b;
-typedef 1819471  PcktCntTotal512b;
-typedef 17990662 RsltCntTotal32b;
-typedef 41481157 RsltCntTotal128b;
-typedef 11494706 RsltCntTotal512b;
-typedef 2 	 MemPortCnt;
+typedef 64 	   Kmer;
+typedef 3716988	   PcktCntHead32b;
+typedef 25394544   PcktCntBody32b;
+typedef 29111532   PcktCntTotal32b;
+typedef 1819471    PcktCntTotal512b;
+typedef 17990661   RsltCntTotal32b;
+typedef 41481147   RsltCntTotal128b;
+typedef 11494704   RsltCntTotal512b;
+typedef 5885287968 RsltCntTotalLngt;
+typedef 2 	   MemPortCnt;
 typedef struct {
 	Bit#(64) addr;
 	Bit#(32) bytes;
