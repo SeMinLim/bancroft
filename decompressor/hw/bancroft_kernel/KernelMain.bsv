@@ -104,9 +104,32 @@ module mkKernelMain(KernelMainIfc);
 	endrule
 
 	// Read the 2-bit encoded reference genome [MEMPORT 1]
+	Reg#(Bit#(32)) rqstRdRefrCnt <- mkReg(0);
+	Reg#(Bit#(64)) rqstRdRefrAddrBuf <- mkReg(0);
+	Reg#(Bit#(32)) rqstRdRefrByteBuf <- mkReg(0);
 	rule rqstRdRefr( rqstRdRefrOn );
-		let rqst <- decompressor.rqstRdRefr;
-		readReqQs[1].enq(MemPortReq{addr:rqst.addr, bytes:rqst.bytes});
+		if ( rqstRdRefrCnt == 0 ) begin
+			let rqst <- decompressor.rqstRdRefr;
+			readReqQs[1].enq(MemPortReq{addr:rqst.addr, bytes:64});
+			
+			if ( rqst.bytes - 64 >= 64 ) begin
+				rqstRdRefrAddrBuf <= rqst.addr  + 64;
+				rqstRdRefrByteBuf <= rqst.bytes - 64;
+				rqstRdRefrCnt 	  <= rqstRdReftCnt + 1;
+			end
+		end else begin
+			readReqQs[1].enq(MemPortReq{addr:rqstRdRefrAddrBuf, bytes:64});
+
+			if ( rqstRdRefrByteBuf - 64 >= 64 ) begin
+				rqstRdRefrAddrBuf <= rqstRdRefrAddrBuf + 64;
+				rqstRdRefrByteBuf <= rqstRdReftByteBuf - 64;
+				rqstRdRefrCnt 	  <= rqstRdRefrCnt + 1;
+			end else begin
+				rqstRdRefrAddrBuf <= 0;
+				rqstRdRefrByteBuf <= 0;
+				rqstRdRefrCnt 	  <= 0;
+			end
+		end
 
 		readRefrOn <= True;
 	endrule
