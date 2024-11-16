@@ -5,22 +5,60 @@ import Vector::*;
 import Serializer::*;
 
 
-typedef 64 KmerLength;
+typedef 16	   Head;
+typedef 64 	   Kmer;
+typedef 3716988	   PcktCntHead32b;
+typedef 25394544   PcktCntBody32b;
+typedef 29111532   PcktCntTotal32b;
+typedef 1819471    PcktCntTotal512b;
+typedef 17990661   RsltCntTotal32b;
+typedef 41481147   RsltCntTotal128b;
+typedef 11494704   RsltCntTotal512b;
+typedef 5885287968 RsltCntTotalLngt;
+typedef TMul#(PcktCntHead32b, 16) TotalTrial;
 typedef struct {
 	Bit#(64) addr;
 	Bit#(32) bytes;
 } MemPortReq deriving (Eq,Bits);
 
 
-interface DecompressorIfc;
-	method Action start(Bit#(32) param);
-	method ActionValue#(Bool) done;
-endinterface
-module mkDecompressor( DecompressorIfc );
-	Reg#(Bool) started <- mkReg(False);
-	FIFO#(Bool) doneQ <- mkFIFO;
+function Tuple3#(Bit#(64), Bit#(32), Bit#(64)) calcPrmtRqst( Bit#(32) idxStrt, Bit#(32) idxCntn );
+	Bit#(64) address = (zeroExtend(idxStrt) * 2) / 8;
+	Bit#(64) idxPntr = (zeroExtend(idxStrt) * 2) % 8;
 
+	Bit#(32) readLngtByte 	  = 0;
+	Bit#(32) readLngtByteTmpl = ((idxCntn + 1) / 4);
+	if ( (idxCntn + 1) % 4  == 0 ) begin
+		if ( idxPntr > 0 ) readLngtByte = (readLngtByteTmpl + 1) * 64;
+		else 		   readLngtByte = readLngtByteTmpl * 64;
+	end else begin
+		readLngtByte = (readLngtByteTmpl + 1) * 64;
+	end
+	
+	return tuple3(address, readLngtByte, idxPntr);
+endfunction
+
+
+interface DecompressorIfc;
+	method Action readPckt(Bit#(512) pckt);
+	method ActionValue#(MemPortReq) rqstRdRefr;
+	method Action readRefr(Bit#(512) refr);
+	method ActionValue#(MemPortReq) rqstWrRslt;
+	merhod ActionValue#(Bit#(512)) rslt;
+endinterface
+(* synthesize *)
+module mkDecompressor( DecompressorIfc );
 	SerializerIfc#(512, 16) serializer512b32b <- mkSerializer;
+
+	FIFO#(Bit#(32)) pcktQ <- mkSizedFIFO(1024);
+	FIFO#(Bit#(32)) vbtmQ <- mkSizedFIFO(1024);
+
+	Reg#(Bit#(32)) pcktHeadTrck <- mkReg(0);
+	Reg#(Bit#(32)) pcktBodyTrck <- mkReg(0);
+	
+	Reg#(Bool) readHeadOn <- mkReg(True);
+	Reg#(Bool) intpHeadOn <- mkReg(False);
+	Reg#(Bool) dcomprssOn <- mkReg(False);
 	//------------------------------------------------------------------------------------
 	// Cycle Counter
 	//------------------------------------------------------------------------------------
@@ -29,298 +67,172 @@ module mkDecompressor( DecompressorIfc );
 		cycleCounter <= cycleCounter + 1;
 	endrule
 	//------------------------------------------------------------------------------------
-	// Memory Read & Write
+	// Serializer
 	//------------------------------------------------------------------------------------
-	Vector#(MemPortCnt, FIFO#(MemPortReq)) readReqQs <- replicateM(mkSizedFIFO(1024));
-	Vector#(MemPortCnt, FIFO#(Bit#(512))) readWordQs <- replicateM(mkSizedFIFO(1024));
-	FIFOF#(Bit#(32)) packet32bQ <- mkSizedFIFOF(1024);
-	// Read compressed sequence
-	Reg#(Bit#(64)) pcktAddrOff <- mkReg(0);
-	rule sendReadReqPckt;
-		readReqQs[0].enq(MemPortReq{addr:pcktAddrOff, bytes:64});
-		pcktAddrOff <= pcktAddrOff + 64;
+	rule serialize;
+		let pckt <- serializer512b32b.get;
+		pcktQ.enq(pckt);
 	endrule
-	rule readWordPckt;
-		readWordQs[0].deq;
-		let r = readWordQs[0].first;
-		serializer512b32b.put(r);
-	endrule
-	rule getWordPckt;
-		let r <- serializer512b32b.get;
-		packet32bQ.enq(r);
-	endrule
-	// Read reference sequence
-	FIFO#(MemPortReq) readReqRefQ <- mkSizedFIFO(1024);
-	FIFO#(Bit#(512)) readWordRefQ <- mkSizedFIFO(1024);
-	Reg#(Bit#(64)) addrBuf <- mkReg(0);
-	Reg#(Bit#(32)) bytesBuf <- mkReg(0);
-	Reg#(Bool) readReqRefDEQUEUE <- mkReg(True);
-	rule sendReadReqRef;
-		Bit#(64) addr = 0;
-		Bit#(32) bytes = 0;
-		if ( readReqRefDEQUEUE ) begin
-			readReqRefQ.deq;
-			let r = readReqRefQ.first;
-			
-			addr = r.addr;
-			bytes = r.bytes;
+	//------------------------------------------------------------------------------------
+	// [STAGE 1]
+	// Interpret the head section first
+	//------------------------------------------------------------------------------------
+	FIFO#(Bit#(2)) headQ <- mkFIFO;
+	Reg#(Bit#(32)) headBuf 	   <- mkReg(0);
+	Reg#(Bit#(32)) readHeadCnt <- mkReg(0);
+	rule readHead( readHeadOn );
+		if ( readHeadCnt == 0 ) begin
+			pcktQ.deq;
+			headQ.enq(truncate(pcktQ.first));
 
-			if ( bytes > 64 ) begin
-				addrBuf <= addr + 64;
-				bytesBuf <= bytes - 64;
-				readReqRefDEQUEUE <= False;
-			end
+			headBuf     <= pcktQ.first >> 2;
+			readHeadCnt <= readHeadCnt + 1;
+			intpHeadOn  <= True;
 		end else begin
-			addr = addrBuf;
-			bytes = bytesBuf;
+			headQ.enq(truncate(headBuf));
 
-			if ( bytes == 64 ) begin
-				addrBuf <= 0;
-				bytesBuf <= 0;
-				readReqRefDEQUEUE <= True;
-			end else begin
-				addrBuf <= addr + 64;
-				bytesBuf <= bytes - 64;
-			end
-		end
-
-		readReqQs[1].enq(MemPortReq{addr:addr, bytes:64});
-	endrule
-	rule readWordRef;
-		readWordQs[1].deq;
-		let r = readWordQs[1].first;
-		readWordRefQ.enq(r);
-	endrule
-	//------------------------------------------------------------------------------------
-	// Decompressor
-	//------------------------------------------------------------------------------------
-	Reg#(Bool) headNeeded <- mkReg(True);
-	Vector#(4, FIFO#(Bit#(8))) relayHeaderQs <- replicateM(mkFIFO);
-	rule relayHeader( headNeeded );
-		packet32bQ.deq;
-		for ( Integer i = 0; i < 4; i = i + 1 ) begin
-			relayHeaderQs[i].enq(truncate(packet32bQ.first >> (i * 8)));
-		end
-		headNeeded <= False;
-	endrule
-	
-	Vector#(16, Bit#(8)) sendPcktReqQs <- replicateM(mkFIFO);
-	Vector#(4, Bit#(32)) pcktCntQs <- replicateM(mkFIFO);
-	for ( Integer i = 0; i < 4; i = i + 1 ) begin
-		rule interpretHeader;
-			relayHeaderQs[i].deq;
-			let heads = relayHeaderQs[i].first;
-			
-			let pcktCnt = 0;
-			for ( Integer j = 0; j < 4; j = j + 1 ) begin
-				Bit#(2) head = truncate(heads >> (j * 2));
-				if ( head == 2'b00 ) begin 	    	// [UNMATCH]
-					sendPcktReqQs[(i*4) + j].enq(0);
-					pcktCnt = pcktCnt + 1;
-				end else if ( head == 2'b01 ) begin 	// [FORWARD NORMAL MATCH]
-					sendPcktReqQs[(i*4) + j].enq(1);
-					pcktCnt = pcktCnt + 1;
-				end else if ( head == 2'b10 ) begin 	// [CONTINUOUS MATCH]
-					sendPcktReqQs[(i*4) + j].enq(2);
-				end else if ( head == 2'b11 ) begin 	// [REVERSE NORMAL MATCH]
-					sendPcktReqQs[(i*4) + j].enq(3);
-					pcktCnt = pcktCnt + 1;
-				end
-			end
-
-			pcktCntQs[i].enq(pcktCnt);
-		endrule
-	end
-	
-	Reg#(Bit#(32)) pcktCntBuf <- mkReg(0);
-	rule calPcktCnt;
-		Vector#(4, Bit#(32)) pcktCntEach = replicate(0);
-		for ( Integer i = 0; i < 4; i = i + 1 ) begin
-			pcktCntQs[i].deq;
-			pcktCntEach[i] = pcktCntQs.first;
-		end
-		Bit#(32) pcktCntTotal = pcktCntEach[0] + pcktCntEach[1] + pcktCntEach[2] + pcktCntEach[3];
-		pcktCntBuf <= pcktCntTotal;
-	endrule
-	
-	FIFO#(Bit#(8)) orderQ <- mkFIFO;
-	FIFO#(Bit#(32)) verbatimQ <- mkFIFO;
-	FIFO#(Bit#(32)) bytesNeededQ <- mkFIFO;
-	Reg#(Bit#(32)) idxStartBuf <- mkReg(0);
-	Reg#(Bit#(32)) idxEndBuf <- mkReg(0);
-	Reg#(Bit#(8)) idxDirection <- mkReg(0);
-	Reg#(Bit#(32)) readPcktCnt <- mkReg(0);
-	Reg#(Bit#(32)) pcktCntTmpBuf <- mkReg(0);
-	rule readPckt;
-		sendPcktReqQs[readPcktCnt].deq;
-		let r = sendPcktReqQs[readPcktCnt].first;
-
-		Bit#(32) pcktCnt = pcktCntTmpBuf;
-		if ( r == 0 ) begin				// [UNMATCH]
-			if ( idxDirection != 0 ) begin
-				Bit#(64) addr 	 = (zeroExtend(idxStartBuf) * 2) / 8;
-				Bit#(64) idxPntr = (zeroExtend(idxStartBuf) * 2) % 8;
-
-				Bit#(32) totalLength 	= (idxEndBuf - idxStartBuf) * 2;
-				Bit#(32) bytesNeededTmp = (totalLength / 512) + 1;
-				Bit#(32) bytesAddtnl 	= 0;
-				Bit#(32) bytesNeeded 	= 0;
-				if ( idxEndBuf > idxStartBuf ) begin
-					bytesAddtnl 	= ((totalLength % 512) + idxPntr) / 512;
-					bytesNeeded 	= (bytesNeededTmp + bytesAddtnl) * 64;
+			if ( readHeadCnt + 1 == fromInteger(valueOf(Head)) ) begin
+				if ( pcktHeadTrck + 1 == fromInteger(valueOf(PcktCntHead32b)) ) begin
+					headBuf      <= 1;
 				end else begin
-					bytesNeeded 	= 64;
+					headBuf      <= 0;
+					readHeadCnt  <= 0;
+					readHeadOn   <= False;
 				end
-				
-				readReqRefQ.enq(MemPortReq{addr:addr, bytes:bytesNeeded});
-				bytesNeededQ.enq(bytesNeeded);
-				
-				idxDirection <= 0;
-
-				orderQ.enq(1);
+				pcktHeadTrck <= pcktHeadTrck + 1;
 			end else begin
-				orderQ.enq(0);
+				headBuf      <= headBuf >> 2;
+				readHeadCnt  <= readHeadCnt + 1;
+			end
+		end
+	endrule
+
+	FIFO#(Tuple3#(Bit#(32), Bit#(64), Bit#(32))) needPrmtDecdQ <- mkFIFO;
+	FIFO#(Bit#(8))	ordrQ	      	<- mkFIFO;
+	Reg#(Bit#(8))   idxDrctBuf    	<- mkReg(0);
+	Reg#(Bit#(32))  idxStrtBuf    	<- mkReg(0);
+	Reg#(Bit#(32))  idxCntnBuf    	<- mkReg(0);
+	Reg#(Bit#(32))  intpHeadCurrCnt <- mkReg(0);
+	Reg#(Bit#(32))  intpHeadTotlCnt <- mkReg(0);
+	rule intpHead( intpHeadOn );
+		headQ.deq;
+		let head = headQ.first;
+		
+		case ( head )
+			2'b00: // [UNMATCH]
+			if ( idxDrctBuf != 0 ) begin
+				let p = caclPrmtRqst(idxStrtBuf, idxCntnBuf);	
+
+				rqstRdRefrQ.enq(MemPortReq{addr:tpl_1(p), bytes:tpl_2(p)});
+				needPrmtDecdQ.enq(tuple3(tpl_2(p), tpl_3(p), idxCntnBuf));
+				ordrQ.enq(1);
+			
+				idxDrctBuf <= 0;
+				idxStrtBuf <= 0;
+				idxCntnBuf <= 0;
+			end else begin
+				ordrQ.enq(0);
 			end
 
-			packet32bQ.deq;
-			verbatimQ.enq(packet32bQ.first);
-			
-			pcktCnt = pcktCnt + 1;
-		end else if ( r == 1 ) begin			// [FORWARD NORMAL MATCH]
-			if ( idxDirection != 0 ) begin
-				Bit#(64) addr 	 = (zeroExtend(idxStartBuf) * 2) / 8;
-				Bit#(64) idxPntr = (zeroExtend(idxStartBuf) * 2) % 8;
+			pcktQ.deq;
+			vbtmQ.enq(pcktQ.first);
+			2'b01: // [FORWARD NORMAL MATCH]
+			if ( idxDrctBuf != 0 ) begin
+				let p = caclPrmtRqst(idxStrtBuf, idxCntnBuf);
 
-				Bit#(32) totalLength 	= (idxEndBuf - idxStartBuf) * 2;
-				Bit#(32) bytesNeededTmp = (totalLength / 512) + 1;
-				Bit#(32) bytesAddtnl 	= 0;
-				Bit#(32) bytesNeeded 	= 0;
-				if ( idxEndBuf > idxStartBuf ) begin
-					bytesAddtnl 	= ((totalLength % 512) + idxPntr) / 512;
-					bytesNeeded 	= (bytesNeededTmp + bytesAddtnl) * 64;
-				end else begin
-					bytesNeeded 	= 64;
-				end
-				
-				readReqRefQ.enq(MemPortReq{addr:addr, bytes:bytesNeeded});
-				bytesNeededQ.enq(bytesNeeded);
+				rqstRdRefrQ.enq(MemPortReq{addr:tpl_1(p), bytes:tpl_2(p)});
+				needPrmtDecdQ.enq(tuple3(tpl_2(p), tpl_3(p), idxCntnBuf));
+				ordrQ.enq(2);
 
-				orderQ.enq(2);
+				idxCntnBuf <= 0;
 			end
 
-			packet32bQ.deq;
-			
-			idxStartBuf <= packet32bQ.first;
-			idxEndBuf <= packet32bQ.first;
-			idxDirection <= 1;
-			
-			pcktCnt = pcktCnt + 1;
-		end else if ( r == 2 ) begin 			// [CONTINUOUS MATCH]
-			if ( idxDirection == 1 ) begin		// [FORWARD]
-				idxEndBuf <= idxEndBuf + fromInteger(valueOf(KmerLength));
+			pcktQ.deq;
+			idxStrtBuf <= pcktQ.first;
+			idxDrctBuf <= 1;
+			2'b10: // [CONTINUOUS MATCH]
+			if ( idxDrctBuf == 1 ) begin		// [FORWARD]
+				idxCntnBuf <= idxCntnBuf + 1;
 			end else if ( idxDirection == 2 ) begin	// [REVERSE]
-				idxStartBuf <= idxStartBuf - fromInteger(valueOf(KmerLength));
+				idxStrtBuf <= idxStrtBuf - fromInteger(valueOf(Kmer));
+				idxCntnBuf <= idxCntnBuf + 1;
 			end
-		end else if ( r == 3 ) begin			// [REVERSE NORMAL MATCH]
-			if ( idxDirection != 0 ) begin
-				Bit#(64) addr 	 = (zeroExtend(idxStartBuf) * 2) / 8;
-				Bit#(64) idxPntr = (zeroExtend(idxStartBuf) * 2) % 8;
+			2'b11: // [REVERSE NORMAL MATCH]
+			if ( idxDrctBuf != 0 ) begin
+				let p = caclPrmtRqst(idxStrtBuf, idxCntnBuf);
 
-				Bit#(32) totalLength 	= (idxEndBuf - idxStartBuf) * 2;
-				Bit#(32) bytesNeededTmp = (totalLength / 512) + 1;
-				Bit#(32) bytesAddtnl 	= 0;
-				Bit#(32) bytesNeeded 	= 0;
-				if ( idxEndBuf > idxStartBuf ) begin
-					bytesAddtnl 	= ((totalLength % 512) + idxPntr) / 512;
-					bytesNeeded 	= (bytesNeededTmp + bytesAddtnl) * 64;
-				end else begin
-					bytesNeeded 	= 64;
-				end
-				
-				readReqRefQ.enq(MemPortReq{addr:addr, bytes:bytesNeeded});
-				bytesNeededQ.enq(bytesNeeded);
-
+				rqstRdRefrQ.enq(MemPortReq{addr:tpl_1(p), bytes:tpl_2(p)});
+				needPrmtDecdQ.enq(tuple3(tpl_2(p), tpl_3(p), idxCntnBuf));
 				orderQ.enq(2);
+
+				idxCntnBuf <= 0;
 			end
 
-			packet32bQ.deq;
-			
-			idxStartBuf <= packet32bQ.first;
-			idxEndBuf <= packet32bQ.first;
+			pcktQ.deq;
+			idxStrtBuf <= pcktQ.first;
+			idxDrctBuf <= 2;
+		endcase
 
-			idxDirection <= 2;
-			
-			pcktCnt = pcktCnt + 1;
-		end
-
-		if ( readPcktCnt + 1 == 16 ) begin
-			if ( pcktCnt != pcktCntBuf ) begin
-				$write( "\033[0;33m[%1d]\033[0m -> \033[1;32m[Decompressor]\033[0m SYSTEM ERROR [TYPE 1]\n", cycleCount );
+		if ( intpHeadCurrCnt + 1 == fromInteger(valueOf(Head)) ) begin
+			if ( intpHeadTotlCnt + 1 == fromInteger(TotalTrial) ) begin
+				intpHeadCurrCnt <= intpHeadCurrCnt;
+			end else begin
+				readHeadOn 	<= True;
+				intpHeadOn 	<= false;
+				intpHeadCurrCnt <= 0;
 			end
-			readPcktCnt <= 0;
-			headerNeeded <= True;
+			intpHeadTotlCnt <= intpHeadTotlCnt + 1;
 		end else begin
-			readPcktCnt <= readPcktCnt + 1;
-			pcktCntTmpBuf <= pcktCnt;
+			dcomprssOn 	<= True;
+			intpHeadCurrCnt <= intpHeadCurrCnt + 1;
+			intpHeadTotlCnt <= intpHeadTotlCnt + 1;
 		end
 	endrule
-
-	Reg#(Bit#(32)) decodeCnt <- mkReg(0);
-	Reg#(Bit#(32)) decodeResult <- mkReg(0);
-	Reg#(Bit#(32)) bytesNeededBuf <- mkReg(0);
-	Reg#(Bit#(8)) orderBuf <- mkReg(0);
-	Reg#(Bool) orderDEQUEUE <- mkReg(True);
-	rule decode;
-		Bit#(8) order = 0;
-		if ( orderDEQUEUE ) begin
-			orderQ.deq;
-			order = orderQ.first;
+	//------------------------------------------------------------------------------------
+	// [STAGE 2]
+	// Decompress the sequence & Send the decompressed data out as 512-bit
+	//------------------------------------------------------------------------------------
+	Reg#(Bit#(512)) rsltBuf <- mkReg(0);
+	Reg#(Bit#(32)) rsltLngtBuf <- mkReg(0);
+	Reg#(Bit#(32)) ordrBuf <- mkReg(0);
+	Reg#(Bit#(32)) dcomprssCurrCnt <- mkReg(0);
+	rule dcomprss( dcomprssOn );
+		Bit#(8) r = 0;
+		if ( dcomprssCurrCnt == 0 ) begin
+			ordrQ.deq;
+			r = ordrQ.first;
+			ordrBuf <= r;
 		end else begin
-			order = orderBuf;
+			r = ordrBuf;
 		end
 
-		if ( order == 0 ) begin			// [UNMATCH FIRST]
-			verbatimQ.deq;
-			decodeResult <= decodeResult ^ verbatimQ.first;
-			decodeCnt <= decodeCnt + 1;
-		end else begin				// [MATCH FIRST]
-			Bit#(32) bytesNeeded = 0;
-			if ( orderDEQUEUE ) begin
-				bytesNeededQ.deq;
-				bytesNeeded = bytesNeededQ.first;
+		case ( r )
+			0: // [CONTINUOUS UNMATCH]
+			vbtmQ.deq;
+			let v = vbtmQ.first;
+
+			if ( rsltLngtBuf + 32 >= 512 ) begin
+				Bit#(512) rslt = rsltBuf | zeroExtend(v) << rsltLngtBuf;
+				rsltQ.enq(rslt);
+
+				rsltBuf     <= zeroExtend(v >> (512 - rsltLngtBuf));
+				rsltLngtBuf <= 32 - (512 - rsltLngtBuf);
 			end else begin
-				bytesNeeded = bytesNeededBuf;
+				rsltBuf     <= rsltBuf | zeroExtend(v) << rsltLngtBuf;
+				rsltLngtBuf <= rsltLngtBuf + 32;
 			end
 
-			readWordRefQ.deq;
-			Bit#(32) decodeResultTmp = decodeResult ^ truncate(readWordRefQ.first);
-			
-			if ( bytesNeeded > 64 ) begin
-				decodeResult <= decodeResultTmp;
-				orderDEQUEUE <= False;
-				bytesNeddedBuf <= byesNeeded - 64;
-			end else begin
-				if ( order == 1 ) begin // [MATCH THEN UNMATCH]
-					verbatimQ.deq;
-					decodeResultTmp = decodeResultTmp ^ verbatimQ.first;
-					decodeResult <= decodeResultTmp;
-					decodeCnt <= decodeCnt + 2;
-				end else begin		// [MATCH THEN ANOTHER MATCH]
-					decodeResult <= decodeResultTmp;
-					decodeCnt <= decodeCnt + 1;
-				end
-				orderDEQUEUE <= True;
-			end
-		end
+			dcomprssCurrCnt <= 0;
+			1: // [MATCH THEN UNMATCH]
+			needPrmtDecdQ.deq;
 
-		if ( decodeCnt + 1 == pcktCntBuf ) doneQ.enq(1);
 	endrule
 	//------------------------------------------------------------------------------------
 	// Interface
 	//------------------------------------------------------------------------------------
 	// Read the compressed genomic data
 	method Action readPckt(Bit#(512) pckt);
-		pcktQ.enq(pckt);
+		serializer512b32b.put(pckt);
 	endmethod
 	// Read the 2-bit encoded reference genome
 	method ActionValue#(MemPortReq) rqstRdRefr;
