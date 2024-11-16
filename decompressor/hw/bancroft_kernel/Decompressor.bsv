@@ -6,27 +6,15 @@ import Serializer::*;
 
 
 typedef 64 KmerLength;
-typedef 128 Kval;
-typedef 128 Wval;
-typedef 2 MemPortCnt;
 typedef struct {
 	Bit#(64) addr;
 	Bit#(32) bytes;
 } MemPortReq deriving (Eq,Bits);
 
 
-interface MemPortIfc;
-	method ActionValue#(MemPortReq) readReq;
-	method ActionValue#(MemPortReq) writeReq;
-	method ActionValue#(Bit#(512)) writeWord;
-	method Action readWord(Bit#(512) word);
-endinterface
-
-
 interface DecompressorIfc;
 	method Action start(Bit#(32) param);
 	method ActionValue#(Bool) done;
-	interface Vector#(MemPortCnt, MemPortIfc) mem;
 endinterface
 module mkDecompressor( DecompressorIfc );
 	Reg#(Bool) started <- mkReg(False);
@@ -330,33 +318,26 @@ module mkDecompressor( DecompressorIfc );
 	//------------------------------------------------------------------------------------
 	// Interface
 	//------------------------------------------------------------------------------------
-	Vector#(MemPortCnt, MemPortIfc) mem_;
-	for (Integer i = 0; i < valueOf(MemPortCnt); i=i+1) begin
-		mem_[i] = interface MemPortIfc;
-			method ActionValue#(MemPortReq) readReq;
-				readReqQs[i].deq;
-				return readReqQs[i].first;
-			endmethod
-			method ActionValue#(MemPortReq) writeReq;
-				writeReqQs[i].deq;
-				return writeReqQs[i].first;
-			endmethod
-			method ActionValue#(Bit#(512)) writeWord;
-				writeWordQs[i].deq;
-				return writeWordQs[i].first;
-			endmethod
-			method Action readWord(Bit#(512) word);
-				readWordQs[i].enq(word);
-			endmethod
-		endinterface;
-	end
-	method Action start(Bit#(32) param) if ( started == False );
-		startQ.enq(param);
+	// Read the compressed genomic data
+	method Action readPckt(Bit#(512) pckt);
+		pcktQ.enq(pckt);
 	endmethod
-	method ActionValue#(Bool) done;
-		doneQ.deq;
-		return doneQ.first;
+	// Read the 2-bit encoded reference genome
+	method ActionValue#(MemPortReq) rqstRdRefr;
+		rqstRdRefrQ.deq;
+		return rqstRdRefrQ.first;
 	endmethod
-	interface mem = mem_;
+	method Action readRefr(Bit#(512) refr);
+		refrQ.enq(refr);
+	endmethod
+	// Write the decompressed 2-bit encoded sequence
+	method ActionValue#(MemPortReq) rqstWrRslt;
+		rqstWrRsltQ.deq;
+		return rqstWrRsltQ.first;
+	endmethod
+	method ActionValue#(Bit#(512)) rslt;
+		rsltQ.deq;
+		return rsltQ.first;
+	endmethod
 endmodule
 
