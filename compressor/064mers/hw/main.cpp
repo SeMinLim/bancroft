@@ -37,7 +37,12 @@ uint64_t seqSizeOrg = 0;
 uint64_t seqSizeCmpN = 0;
 uint64_t seqSizeCmpI = 0;
 uint64_t seqSizeCmpP = 0;
+uint64_t seqSizeCmpT = 0;
 uint64_t seqSizeRmnd = 0;
+
+
+uint64_t statMatchYs = 0;
+uint64_t statMatchNo = 0;
 
 
 // Reference: hg19From1
@@ -297,11 +302,16 @@ void compressor_unit_ch( const uint64_t stride ) {
 				// Number of packet
 				pknumb.push_back(pcktCount);
 				pcktCount = 0;
+				// Update the stats
+				statMatchYs += seqSizeCmpP - statMatchYs;
+				statMatchNo += seqSizeCmpN - statMatchNo;
 			} else {
 				headCount ++;
 			}
 			// Update packet vector
 			if ( currPckt == 1 ) packet.push_back(pckt);
+			// Update the parameters
+			seqSizeCmpT ++;
 		}
 		// Handle remainder
 		uint64_t remainder = sequences[seqIdx].size() - start;
@@ -438,6 +448,8 @@ void compressor_unit_wh( const uint64_t stride ) {
 		}
 		// Update packet vector
 		if ( currPckt == 1 ) packet.push_back(pckt);
+		// Update the parameters
+		seqSizeCmpT ++;
 		// Check the progress
 		if ( start % 1000000 == 0 ) {
 			printf( "[STEP 3] Compressing the sequences is processing...[%lu/%lu]\n", start, sequence.size() );
@@ -455,7 +467,7 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/sequence/HG003_SUB.fastq";
+	char *filenameS = "/mnt/ephemeral/sequence/HG003_SUB_SUB.fastq";
 	char *filenameR = "/mnt/ephemeral/reference/HG19Reference064MersFrom1IndexIncluded.bin";
 	char *filenameC = "/mnt/ephemeral/compressed/HG003_SUB_COMP.bin";
 
@@ -517,7 +529,11 @@ int main( int argc, char **argv ) {
 	printf( "Elapsed Time: %lf\n", elapsedTime );
 	printf( "---------------------------------------------------------------------\n" );
 	printf( "The Number of 32-bit Header: %lu\n", header.size() );
-	printf( "The Number of 32-bit Packet: %lu\n", packet.size() );
+	printf( "The Number of 32-bit Packet: %lu\n", pointer );
+	printf( "---------------------------------------------------------------------\n" );
+	printf( "The Number of Total Match          : %lu\n", statMatchYs + statMatchNo );
+	printf( "The Number of Total Match [STRIDE] : %lu\n", statMatchNo );
+	printf( "The Number of Total Match   [KMER] : %lu\n", statMatchYs );
 	printf( "---------------------------------------------------------------------\n" );
 
 	return 0;
