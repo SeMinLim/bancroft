@@ -80,7 +80,7 @@ module mkKernelMain(KernelMainIfc);
 	rule rqstRdPckt( rqstRdPcktOn );
 		readReqQs[0].enq(MemPortReq{addr:addrBuf, bytes:64});
 	
-		if ( rqstPcktCnt + 1 == fromInteger(valueOf(PcktCntTotal512b)) ) begin
+		if ( rqstRdPcktCnt + 1 == fromInteger(valueOf(PcktCntTotal512b)) ) begin
 			addrBuf       <= 0;
 			rqstRdPcktCnt <= 0;
 			rqstRdPcktOn  <= False;
@@ -118,14 +118,14 @@ module mkKernelMain(KernelMainIfc);
 			if ( rqst.bytes - 64 >= 64 ) begin
 				rqstRdRefrAddrBuf <= rqst.addr  + 64;
 				rqstRdRefrByteBuf <= rqst.bytes - 64;
-				rqstRdRefrCnt 	  <= rqstRdReftCnt + 1;
+				rqstRdRefrCnt 	  <= rqstRdRefrCnt + 1;
 			end
 		end else begin
 			readReqQs[1].enq(MemPortReq{addr:rqstRdRefrAddrBuf, bytes:64});
 
 			if ( rqstRdRefrByteBuf - 64 >= 64 ) begin
 				rqstRdRefrAddrBuf <= rqstRdRefrAddrBuf + 64;
-				rqstRdRefrByteBuf <= rqstRdReftByteBuf - 64;
+				rqstRdRefrByteBuf <= rqstRdRefrByteBuf - 64;
 				rqstRdRefrCnt 	  <= rqstRdRefrCnt + 1;
 			end else begin
 				rqstRdRefrAddrBuf <= 0;
@@ -201,7 +201,7 @@ module mkKernelMain(KernelMainIfc);
 		endinterface;
 	end
 	method Action start(Bit#(32) param) if ( started == False );
-		startQ.enq(param);
+		startQ.enq(True);
 	endmethod
 	method ActionValue#(Bool) done;
 		doneQ.deq;
