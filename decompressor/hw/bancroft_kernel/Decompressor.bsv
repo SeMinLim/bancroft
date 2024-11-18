@@ -198,6 +198,7 @@ module mkDecompressor( DecompressorIfc );
 	// Decompress the sequence & Send the decompressed data out as 512-bit
 	//------------------------------------------------------------------------------------
 	FIFO#(Tuple5#(Bit#(32), Bit#(64), Bit#(32), Bool, Bit#(8))) dcomprssPrmtQ <- mkFIFO;
+	FIFO#(Tuple4#(Bit#(512), Bit#(32), Bit#(32), Bit#(8)))  dcomprssPipeQ <- mkSizedBRAMFIFO(1024);
 	FIFO#(Bit#(8)) dcomprssOrdrQ <- mkFIFO;
 	rule cntlOrdr( cntlOrdrOn );
 		ordrQ.deq;
@@ -217,11 +218,9 @@ module mkDecompressor( DecompressorIfc );
 		dcomprssOn <= True;
 	endrule
 
-	FIFO#(Tuple6#(Bit#(512), Bit#(32), Bit#(64), Bit#(32), Bool, Bit#(8))) dcomprssPipe1Q <- mkSizedBRAMFIFO(1024);
-	FIFO#(Tuple6#(Bit#(512), Bit#(32), Bit#(64), Bit#(32), Bool, Bit#(8))) dcomprssPipe2Q <- mkSizedBRAMFIFO(1024);
-	FIFO#(Tuple4#(Bit#(512), Bit#(512), Bit#(32), Bit#(8))) make512bPipeQ <- mkSizedBRAMFIFO(1024);
 	FIFO#(Tuple3#(Bit#(512), Bit#(32), Bit#(8))) make512bQ <- mkSizedBRAMFIFO(1024);
-	rule dcomprss( dcomprssOn );
+	FIFO#(Tuple4#(Bit#(512), Bit#(512), Bit#(32), Bit#(8))) make512bPipeQ <- mkSizedBRAMFIFO(1024);
+	rule dcomprssPipeStage_1( dcomprssOn );
 		dcomprssOrdrQ.deq;
 		let ordr = dcomprssOrdrQ.first;
 	
@@ -243,13 +242,29 @@ module mkDecompressor( DecompressorIfc );
 			let direction	= tpl_5(p);
 
 			if ( bytes > 64 ) begin
-				dcomprssPipe1Q.enq(tuple6(r, bytes, pointer, continuous, starter, direction));
+				if ( starter && (pointer > 0) ) begin
+					r = r >> pointer;
+					continuous = continuous - 3;
+				end
+
+				make512bQ.enq(tuple3(r, 512, direction));
 				dcomprssOrdrQ.enq(ordr);
 				dcomprssPrmtQ.enq(tuple5(bytes - 64, pointer, continuous, False, direction));
 				
 				pcktBodyTrck <= pcktBodyTrck + 1;
 			end else begin
-				dcomprssPipe2Q.enq(tuple6(r, bytes, pointer, continuous, starter, direction));
+				Bit#(32) length = 0;
+				if ( starter ) begin
+					length = continuous * 128;
+					r = r >> pointer;
+				end else begin
+					length = truncate(pointer);
+				end
+
+				Bit#(32) remove = 512 - length;
+
+				dcomprssPipeQ.enq(tuple4(r, remove, length, direction));
+				
 				if ( ordr == 1 ) begin
 					dcomprssOrdrQ.enq(0);
 					dcomprssOn <= False;
@@ -259,47 +274,15 @@ module mkDecompressor( DecompressorIfc );
 		end
 	endrule
 
-	rule dcomprssPipe1;
-		dcomprssPipe1Q.deq;
-		let p = dcomprssPipe1Q.first;
+	rule dcomprssPipeStage_2;
+		dcomprssPipeQ.deq;
+		let p = dcomprssPipeQ.first;
 		let r		= tpl_1(p);
-		let bytes 	= tpl_2(p);
-		let pointer 	= tpl_3(p);
-		let continuous 	= tpl_4(p);
-		let starter	= tpl_5(p);
-		let direction	= tpl_6(p);
+		let remove 	= tpl_2(p);
+		let length 	= tpl_3(p);
+		let direction 	= tpl_4(p);
 
-		if ( starter && (pointer > 0) ) begin
-			r = r >> pointer;
-			continuous = continuous - 3;
-		end
-
-		make512bQ.enq(tuple3(r, 512, direction));
-	endrule
-
-	rule dcomprssPipe2;
-		dcomprssPipe2Q.deq;
-		let p = dcomprssPipe2Q.first;
-		let r		= tpl_1(p);
-		let bytes 	= tpl_2(p);
-		let pointer 	= tpl_3(p);
-		let continuous 	= tpl_4(p);
-		let starter	= tpl_5(p);
-		let direction	= tpl_6(p);
-
-		Bit#(32) length = 32;
-		Bit#(32) remove = 32;
-/*		if ( starter ) begin
-			length = continuous * 128;
-			remove = 512 - length;
-		end else begin
-			length = truncate(pointer);
-			remove = 512 - length;
-		end
-*/
-		Bit#(512) rTmp1 = r >> pointer;
-		Bit#(512) rTmp2 = rTmp1 << remove;
-		Bit#(512) rFinal = rTmp2 >> remove;
+		Bit#(512) rFinal = (r << remove) >> remove;
 
 		dcomprssOn <= True;
 
@@ -309,7 +292,7 @@ module mkDecompressor( DecompressorIfc );
 	Reg#(Bit#(512)) rsltBuf     <- mkReg(0);
 	Reg#(Bit#(32))  rsltLngtBuf <- mkReg(0);
 	Reg#(Bit#(64))  rsltAddrBuf <- mkReg(268435456);
-	rule make512b;
+	rule make512bPipeStage_1;
 		make512bQ.deq;
 		let p = make512bQ.first;
 		let r 	      = tpl_1(p);
@@ -328,7 +311,7 @@ module mkDecompressor( DecompressorIfc );
 		make512bPipeQ.enq(tuple4(rsltTmpl, rslt, length, direction));
 	endrule
 	
-	rule make512bPipe;
+	rule make512bPipeStage_2;
 		make512bPipeQ.deq;
 		let p = make512bPipeQ.first;
 		let r 	      = tpl_1(p);
