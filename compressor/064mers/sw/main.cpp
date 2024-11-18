@@ -20,12 +20,14 @@ using namespace std;
 #define BINARYRWUNIT 8
 #define CHROMOSOMEUNIT 1
 #define GROUPVARINT 1
-#define FASTQ 1
+#define FASTQ 0
+#define HISTOGRAM 1
 
 
 string sequence;
 vector<string> sequences;
 map<pair<uint64_t, uint64_t>, uint32_t> reference;
+map<uint32_t, uint32_t> histogram;
 
 
 uint64_t seqSizeOrg = 0;
@@ -164,6 +166,8 @@ void compressor_unit_ch( const uint64_t stride ) {
 	uint32_t prevIndex = 0;
 	uint32_t currIndex = 0;
 	for ( uint64_t seqIdx = 0; seqIdx < sequences.size(); seqIdx ++ ) {
+		bool newMatch = false;
+		uint32_t currContinuous = 0;
 		uint64_t start = 0;
 		while ( (double)start <= (double)sequences[seqIdx].size() - (double)KMERLENGTH ) {
 			// Get subsequence
@@ -185,7 +189,22 @@ void compressor_unit_ch( const uint64_t stride ) {
 				if ( seqSizeCmpP != 0 ) {
 					if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
 						seqSizeCmpI ++;
+						currContinuous ++;
+					} else {
+						if ( newMatch ) {
+							if ( histogram.insert(make_pair(currContinuous, 1)).second == false ) {
+								histogram.at(currContinuous) += 1;
+							}
+							newMatch = false;
+							currContinuous = 0;
+						} else {
+							newMatch = true;
+							currContinuous ++;
+						}
 					}
+				} else {
+					newMatch = true;
+					currContinuous ++;
 				}
 				// Update the parameters
 				prevIndex = currIndex;
@@ -203,7 +222,22 @@ void compressor_unit_ch( const uint64_t stride ) {
 					if ( seqSizeCmpP != 0 ) {
 						if ( (currIndex == prevIndex + KMERLENGTH) || (currIndex == prevIndex - KMERLENGTH) ) {
 							seqSizeCmpI ++;
+							currContinuous ++;
+						} else {
+							if ( newMatch ) {
+								if ( histogram.insert(make_pair(currContinuous, 1)).second == false ) {
+									histogram.at(currContinuous) += 1;
+								}
+								newMatch = false;
+								currContinuous = 0;
+							} else {
+								newMatch = true;
+								currContinuous ++;
+							}
 						}
+					} else {
+						newMatch = true;
+						currContinuous ++;
 					}
 					// Update the parameters
 					prevIndex = currIndex;
@@ -300,8 +334,9 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/sequence/HG002_SUB.fastq";
+	char *filenameS = "/mnt/ephemeral/sequence/HG38.fasta";
 	char *filenameR = "/mnt/ephemeral/reference/HG19Reference064MersFrom1IndexIncluded.bin";
+	char *filenameH = "/mnt/ephemeral/data/HG38_HISTOGRAM.csv";
 
 	// Read sequence file
 	if ( FASTQ ) seqReaderFASTQ( filenameS );
@@ -323,6 +358,14 @@ int main( int argc, char **argv ) {
 		else compressor_unit_wh( stride );
 		double processFinish = timeChecker();
 		double elapsedTime = processFinish - processStart;
+		// Histogram
+		if ( stride == 16 && HISTOGRAM ) {
+			ofstream f_histogram(filenameH);
+			for ( auto iter = histogram.begin(); iter != histogram.end(); ++ iter ) {
+				f_histogram << iter->first << "," << iter->second << endl;
+			}
+			f_histogram.close();
+		}
 		// Results
 		printf( "REFERENCE\n" );
 		printf( "The Length of K-Mer: %d\n", KMERLENGTH );
