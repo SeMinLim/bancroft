@@ -15,6 +15,7 @@
 #include <algorithm>
 using namespace std;
 
+
 // XRT includes
 #include "xrt/xrt_bo.h"
 #include <experimental/xrt_xclbin.h>
@@ -23,11 +24,11 @@ using namespace std;
 
 
 #define DEVICE_ID 0
-#define HG19_COUNT 2864785220
-#define HEAD_COUNT 3716988
-#define BODY_COUNT 25394544
+#define HG19_COUNT 65536
+#define HEAD_COUNT 1024
 #define SIZE_PORT_1 (1024*1024*256*2)
-#define SIZE_PORT_2 (1024*1024*256*3)
+#define SIZE_PORT_2 (1024*1024*256*1)
+#define RESULTADDRESS 268435456
 
 
 vector<uint32_t> packet;
@@ -46,7 +47,7 @@ void pktReader( char *filename ) {
 	// Terminate
 	f_data_packet.close();
 	printf( "---------------------------------------------------------------------\n" );
-	printf( "[STEP 2] Reading packet is done!\n" );
+	printf( "[STEP 1] Reading packet is done!\n" );
 	printf( "---------------------------------------------------------------------\n" );
 	fflush( stdout );
 }
@@ -61,15 +62,14 @@ void refReader( char *filename ) {
 	}
 	// Terminate
 	f_data_reference.close();
-	printf( "---------------------------------------------------------------------\n" );
-	printf( "[STEP 1] Reading reference is done!\n" );
+	printf( "[STEP 2] Reading reference is done!\n" );
 	printf( "---------------------------------------------------------------------\n" );
 	fflush( stdout );
 }
 
 
 int main(int argc, char** argv) {
-	char *filenameP = "/mnt/ssd0/semin/bancroft/data/compressed/HG003_SUB_COMP_064Mers.bin";
+	char *filenameP = "/mnt/ssd0/semin/bancroft/data/compressed/HG003_SUB_COMP.bin";
 	char *filenameR = "/mnt/ssd0/semin/bancroft/data/sequence/HG19.fasta.bin";
 
 	// Read the compressed data
@@ -85,7 +85,8 @@ int main(int argc, char** argv) {
 	
 	auto krnl = xrt::kernel(device, xclbin_uuid, "kernel:{kernel_1}");
 
-	cout << "Allocate Buffer in Global Memory\n";
+	cout << "[Xilinx Alveo U50]" << endl;
+	cout << "Allocate Buffer in Global Memory" << endl;
 	fflush( stdout );
 	auto boIn1 = xrt::bo(device, (size_t)SIZE_PORT_1, krnl.group_id(1));
 	auto boOut = xrt::bo(device, (size_t)SIZE_PORT_2, krnl.group_id(2)); 
@@ -103,29 +104,24 @@ int main(int argc, char** argv) {
 	}
 
 	// Synchronize buffer content with device side
-	cout << " synchronize input buffer data to device global memory\n";
+	cout << "Synchronize input buffer data to device global memory" << endl;
 	fflush(stdout);
 	boIn1.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 	boOut.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-	cout << "Execution of the kernel\n";
+	cout << "Execution of the kernel" << endl;
 	fflush(stdout);
 	auto run = krnl((size_t)SIZE_PORT_1 + (size_t)SIZE_PORT_2, boIn1, boOut); //DATA_SIZE=size
 	run.wait();
 
-	// Get the output;
-	cout << "Get the output data from the device" << std::endl;
+	// Get the output
+	cout << "Get the output data from the device" << endl;
+	fflush(stdout);
 	boOut.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
-//	for ( int i = 0; i < 8; i++ ) {
-//		printf( "%x %x:%x -- %x %x\n", bo3_map[i], DATA_SIZE-1-i, bo3_map[DATA_SIZE-1-i], bo2_map[i], bo2_map[DATA_SIZE-1-i] );
-//	}
-
-	// Validate results
-	//if (std::memcmp(bo2_map, bufReference, vector_size_bytes))
-		//throw std::runtime_error("Value read back does not match reference");
-
-	cout << "TEST PASSED\n";
+	// Read cycle count
+	printf( "Cycle Count: %u\n", bo0_map[RESULTADDRESS] );
+	cout << "TEST PASSED" << endl;
 
 	return 0;
 }
