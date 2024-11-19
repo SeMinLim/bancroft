@@ -5,16 +5,21 @@ import Vector::*;
 import Decompressor::*;
 
 
-typedef 64 	   Kmer;
-typedef 3716988	   PcktCntHead32b;
-typedef 25394544   PcktCntBody32b;
-typedef 29111532   PcktCntTotal32b;
-typedef 1819471    PcktCntTotal512b;
-typedef 17990661   RsltCntTotal32b;
-typedef 41481147   RsltCntTotal128b;
-typedef 11494704   RsltCntTotal512b;
-typedef 5885287968 RsltCntTotalLngt;
-typedef 2 	   MemPortCnt;
+typedef 64 Kmer;
+
+typedef 343525 	DataCntHead32b;
+typedef 2422857 DataCntBody32b;
+typedef TAdd#(DataCntHead32b, DataCntBody32b) DataCntTotal32b;
+typedef TDiv#(DataCntTotal32b, 16) DataCntTotal512b;
+
+typedef 1747088 ResultCntTotalStride;
+typedef 3749312 ResultCntTotalKmer;
+typedef TMul#(ResultCntTotalStride, 32) ResultCntTotalStrideLength;
+typedef TMul#(ResultCntTotalKmer, 128) ResultCntTotalKmerLength;
+typedef TAdd#(ResultCntTotalStrideLength, ResultCntTotalKmerLength) ResultCntTotalLength;
+typedef TDiv#(ResultCntTotalLength, 512) ResultCntTotal;
+
+typedef 2 MemPortCnt;
 typedef struct {
 	Bit#(64) addr;
 	Bit#(32) bytes;
@@ -38,13 +43,13 @@ module mkKernelMain(KernelMainIfc);
 	FIFO#(Bool) startQ <- mkFIFO;
 	FIFO#(Bool) doneQ  <- mkFIFO;
 
-	Reg#(Bool) started	<- mkReg(False);
-	Reg#(Bool) rqstRdPcktOn <- mkReg(False);
-	Reg#(Bool) readPcktOn 	<- mkReg(False);
-	Reg#(Bool) rqstRdRefrOn <- mkReg(False);
-	Reg#(Bool) readRefrOn 	<- mkReg(False);
-	Reg#(Bool) rqstWrRsltOn <- mkReg(False);
-	Reg#(Bool) wrteRsltOn 	<- mkReg(False);
+	Reg#(Bool) started 		<- mkReg(False);
+	Reg#(Bool) reqReadDataOn 	<- mkReg(False);
+	Reg#(Bool) readDataOn 		<- mkReg(False);
+	Reg#(Bool) reqReadRefOn 	<- mkReg(False);
+	Reg#(Bool) readRefOn 		<- mkReg(False);
+	Reg#(Bool) reqWriteResultOn 	<- mkReg(False);
+	Reg#(Bool) writeResultOn 	<- mkReg(False);
 
 	DecompressorIfc decompressor <- mkDecompressor;
 	//------------------------------------------------------------------------------------
@@ -59,15 +64,13 @@ module mkKernelMain(KernelMainIfc);
 	//------------------------------------------------------------------------------------
 	rule systemStart( !started );
 		startQ.deq;
-		started      <= True;
-		rqstRdPcktOn <= True;
-		rqstRdRefrOn <= True;
-		rqstWrRsltOn <= True;
+		started      		<= True;
+		reqReadDataOn	 	<= True;
+		reqReadRefOn 		<= True;
+		reqWriteResultOn 	<= True;
 	endrule
 	//------------------------------------------------------------------------------------
 	// [Memory Read]
-	// 29,111,534 x 32-bit packet = 1,819,471 x 512-bit packet
-	// 2,864,785,220-bp x 2-bit = 5,729,570,440-bit = 716,196,305-byte
 	//------------------------------------------------------------------------------------
 	Vector#(MemPortCnt, FIFO#(MemPortReq)) readReqQs <- replicateM(mkFIFO);
 	Vector#(MemPortCnt, FIFO#(MemPortReq)) writeReqQs <- replicateM(mkFIFO);
@@ -75,106 +78,105 @@ module mkKernelMain(KernelMainIfc);
 	Vector#(MemPortCnt, FIFO#(Bit#(512))) readWordQs <- replicateM(mkFIFO);
 
 	// Read the compressed genomic data 	   [MEMPORT 0]
-	Reg#(Bit#(32)) rqstRdPcktCnt <- mkReg(0);
-	Reg#(Bit#(64)) addrBuf <- mkReg(0);
-	rule rqstRdPckt( rqstRdPcktOn );
-		readReqQs[0].enq(MemPortReq{addr:addrBuf, bytes:64});
-	
-		if ( rqstRdPcktCnt + 1 == fromInteger(valueOf(PcktCntTotal512b)) ) begin
-			addrBuf       <= 0;
-			rqstRdPcktCnt <= 0;
-			rqstRdPcktOn  <= False;
+	Reg#(Bit#(32)) reqReadDataCnt <- mkReg(0);
+	Reg#(Bit#(64)) addr <- mkReg(0);
+	rule reqReadData( reqReadDataOn );
+		readReqQs[0].enq(MemPortReq{addr:addr, bytes:64});
+		if ( reqReadDataCnt + 1 == fromInteger(valueOf(DataCntTotal512b)) ) begin
+			addr 		<= 0;
+			reqReadDataCnt 	<= 0;
+			reqReadDataOn 	<= False;
 		end else begin
-			addrBuf       <= addrBuf + 64;
-			rqstRdPcktCnt <= rqstRdPcktCnt + 1;
+			addr 		<= addressR + 64;
+			reqReadDataCnt 	<= requestReadDataCnt + 1;
 		end
-
-		readPcktOn <= True;
+		readDataOn <= True;
 	endrule
-	Reg#(Bit#(32)) readPcktCnt <- mkReg(0);
-	rule readPckt( readPcktOn );
+	Reg#(Bit#(32)) readDataCnt <- mkReg(0);
+	rule readData( readDataOn );
 		readWordQs[0].deq;
-		let pckt = readWordQs[0].first;
+		let data = readWordQs[0].first;
 	
-		decompressor.readPckt(pckt);
+		decompressor.readData(data);
 		
-		if ( readPcktCnt + 1 == fromInteger(valueOf(PcktCntTotal512b)) ) begin
-			readPcktCnt <= 0;
-			readPcktOn  <= False;
+		if ( readDataCnt + 1 == fromInteger(valueOf(DataCntTotal512b)) ) begin
+			readDataCnt <= 0;
+			readDataOn  <= False;
 		end else begin
-			readPcktCnt <= readPcktCnt + 1;
+			readDataCnt <= readDataCnt + 1;
 		end
 	endrule
 
 	// Read the 2-bit encoded reference genome [MEMPORT 1]
-	Reg#(Bit#(32)) rqstRdRefrCnt <- mkReg(0);
-	Reg#(Bit#(64)) rqstRdRefrAddrBuf <- mkReg(0);
-	Reg#(Bit#(32)) rqstRdRefrByteBuf <- mkReg(0);
-	rule rqstRdRefr( rqstRdRefrOn );
-		if ( rqstRdRefrCnt == 0 ) begin
-			let rqst <- decompressor.rqstRdRefr;
+	Reg#(Bit#(32)) reqReadRefCnt <- mkReg(0);
+	Reg#(Bit#(64)) reqReadRefAddr <- mkReg(0);
+	Reg#(Bit#(32)) reqReadRefByte <- mkReg(0);
+	rule reqReadRef( reqReadRefOn );
+		if ( reqReadRefCnt == 0 ) begin
+			let req <- decompressor.reqReadRef;
 			readReqQs[1].enq(MemPortReq{addr:rqst.addr, bytes:64});
 			
-			if ( rqst.bytes - 64 >= 64 ) begin
-				rqstRdRefrAddrBuf <= rqst.addr  + 64;
-				rqstRdRefrByteBuf <= rqst.bytes - 64;
-				rqstRdRefrCnt 	  <= rqstRdRefrCnt + 1;
+			if ( req.bytes - 64 >= 64 ) begin
+				reqReadRefAddr 	<= req.addr  + 64;
+				reqReadRefByte	<= req.bytes - 64;
+				reqReadRefCnt	<= reqReadRefCnt + 1;
 			end
 		end else begin
-			readReqQs[1].enq(MemPortReq{addr:rqstRdRefrAddrBuf, bytes:64});
+			readReqQs[1].enq(MemPortReq{addr:reqReadRefAddr, bytes:64});
 
-			if ( rqstRdRefrByteBuf - 64 >= 64 ) begin
-				rqstRdRefrAddrBuf <= rqstRdRefrAddrBuf + 64;
-				rqstRdRefrByteBuf <= rqstRdRefrByteBuf - 64;
-				rqstRdRefrCnt 	  <= rqstRdRefrCnt + 1;
+			if ( reqReadRefByte - 64 >= 64 ) begin
+				reqReadRefAddr 	<= reqReadRefAddr + 64;
+				reqReadRefByte 	<= reqReadRefByte - 64;
+				reqReadRefCnt	<= reqReadRefCnt + 1;
 			end else begin
-				rqstRdRefrAddrBuf <= 0;
-				rqstRdRefrByteBuf <= 0;
-				rqstRdRefrCnt 	  <= 0;
+				reqReadRefAddr 	<= 0;
+				reqReadRefByte 	<= 0;
+				reqReadRefCnt	<= 0;
 			end
 		end
 
-		readRefrOn <= True;
+		readRefOn <= True;
 	endrule
-	rule readRefr( readRefrOn );
+	rule readRef( readRefOn );
 		readWordQs[1].deq;
-		let refr = readWordQs[1].first;
+		let ref = readWordQs[1].first;
 
-		decompressor.readRefr(refr);
+		decompressor.readRef(ref);
 	endrule
 	//------------------------------------------------------------------------------------
 	// [Memory Write] & [System Finish]
 	// Memory Writer is going to use HBM[1] 
 	// to store the decompressed 2-bit encoded sequence
 	// 268,435,456 ~ 536,870,912 
+	// UPDATE!!! Cycle count number will be written at 268,435,456
 	//------------------------------------------------------------------------------------
-	Reg#(Bit#(32)) rqstWrRsltCnt <- mkReg(0);
-	rule rqstWrRslt( rqstWrRsltOn );
-		let rslt <- decompressor.rqstWrRslt;
-		writeReqQs[0].enq(MemPortReq{addr:rslt.addr, bytes:rslt.bytes});
+	Reg#(Bit#(32)) reqWriteResultCnt <- mkReg(0);
+	rule reqWriteResult( reqWriteResultOn );
+		let result <- decompressor.reqWriteResult;
+		writeReqQs[0].enq(MemPortReq{addr:result.addr, bytes:result.bytes});
 
-		if ( rqstWrRsltCnt + 1 == fromInteger(valueOf(RsltCntTotal512b)) ) begin
-			rqstWrRsltCnt <= 0;
-			rqstWrRsltOn  <= False;
+		if ( reqWriteResultCnt + 1 == fromInteger(valueOf(ResultCntTotal512b)) ) begin
+			reqWriteResultCnt <= 0;
+			reqWriteResultOn  <= False;
 		end else begin
-			rqstWrRsltCnt <= rqstWrRsltCnt + 1;
+			reqWriteResultCnt <= reqWriteResultCnt + 1;
 		end
 
-		wrteRsltOn <= True;
+		writeResultOn <= True;
 	endrule
-	Reg#(Bit#(32)) wrteRsltCnt <- mkReg(0);
-	rule wrteRslt( wrteRsltOn );
-		let rslt <- decompressor.wrteRslt;
-		writeWordQs[0].enq(rslt);
+	Reg#(Bit#(32)) writeResultCnt <- mkReg(0);
+	rule writeResult( writeResultOn );
+		let result <- decompressor.writeResult;
+		writeWordQs[0].enq(result);
 
 		// System Finish
-		if ( wrteRsltCnt + 1 == fromInteger(valueOf(RsltCntTotal512b)) ) begin
-			wrteRsltCnt <= 0;
-			wrteRsltOn  <= False;
-			started     <= False;
+		if ( writeResultCnt + 1 == fromInteger(valueOf(ResultCntTotal512b)) ) begin
+			writeResultCnt 	<= 0;
+			writeResultOn  	<= False;
+			started		<= False;
 			doneQ.enq(True);
 		end else begin
-			wrteRsltCnt <= wrteRsltCnt + 1;
+			writeResultCnt <= writeResultCnt + 1;
 		end
 	endrule
 	//------------------------------------------------------------------------------------
@@ -209,4 +211,3 @@ module mkKernelMain(KernelMainIfc);
 	endmethod
 	interface mem = mem_;
 endmodule
-

@@ -26,7 +26,7 @@ module kernel (KernelTopIfc);
 
 	// AXI
 	Axi4LiteControllerXrtIfc#(12,32) axi4control <- mkAxi4LiteControllerXrt(defaultClock, defaultReset);
-	Vector#(2, Axi4MemoryMasterIfc#(64,512)) axi4mem <- replicateM(mkAxi4MemoryMaster);
+	Vector#(2, Axi4MemoryMasterIfc#(64,512)) axi4mem <- replicateM(mkAxi4MemoryMaster_64_512);
 	
 	// KernelMain
 	KernelMainIfc kernelMain <- mkKernelMain;
