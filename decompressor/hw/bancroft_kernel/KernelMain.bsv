@@ -90,8 +90,8 @@ module mkKernelMain(KernelMainIfc);
 			reqReadDataCnt 	<= 0;
 			reqReadDataOn 	<= False;
 		end else begin
-			addr 		<= addressR + 64;
-			reqReadDataCnt 	<= requestReadDataCnt + 1;
+			addr 		<= addr + 64;
+			reqReadDataCnt 	<= reqReadDataCnt + 1;
 		end
 
 		readDataOn <= True;
@@ -119,7 +119,7 @@ module mkKernelMain(KernelMainIfc);
 	rule reqReadRef( reqReadRefOn );
 		if ( reqReadRefCnt == 0 ) begin
 			let req <- decompressor.reqReadRef;
-			readReqQs[1].enq(MemPortReq{addr:rqst.addr, bytes:64});
+			readReqQs[1].enq(MemPortReq{addr:req.addr, bytes:64});
 			
 			if ( req.bytes - 64 >= 64 ) begin
 				reqReadRefAddr 	<= req.addr  + 64;
@@ -144,9 +144,9 @@ module mkKernelMain(KernelMainIfc);
 	endrule
 	rule readRef( readRefOn );
 		readWordQs[1].deq;
-		let ref = readWordQs[1].first;
+		let reference = readWordQs[1].first;
 
-		decompressor.readRef(ref);
+		decompressor.readRef(reference);
 	endrule
 	//------------------------------------------------------------------------------------
 	// [Memory Write] & [System Finish]
@@ -160,7 +160,7 @@ module mkKernelMain(KernelMainIfc);
 		let result <- decompressor.reqWriteResult;
 		writeReqQs[0].enq(MemPortReq{addr:result.addr, bytes:result.bytes});
 
-		if ( reqWriteResultCnt == fromInteger(valueOf(ResultCntTotal512b)) ) begin
+		if ( reqWriteResultCnt == fromInteger(valueOf(ResultCntTotal)) ) begin
 			reqWriteResultCnt <= 0;
 			reqWriteResultOn  <= False;
 		end else begin
@@ -175,10 +175,10 @@ module mkKernelMain(KernelMainIfc);
 		writeWordQs[0].enq(result);
 
 		// System Finish
-		if ( writeResultCnt + 1 == fromInteger(valueOf(ResultCntTotal512b)) ) begin
+		if ( writeResultCnt + 1 == fromInteger(valueOf(ResultCntTotal)) ) begin
 			writeReqQs[0].enq(MemPortReq{addr:268435456, bytes:64});
 			writeResultCnt <= writeResultCnt + 1;
-		end else if ( writeResultCnt == fromInteger(valueOf(ResultCntTotal512b)) ) begin
+		end else if ( writeResultCnt == fromInteger(valueOf(ResultCntTotal)) ) begin
 			writeResultCnt 	<= 0;
 			writeResultOn  	<= False;
 			started		<= False;
