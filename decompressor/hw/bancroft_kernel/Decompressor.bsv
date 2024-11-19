@@ -24,8 +24,8 @@ function Tuple3#(Bit#(64), Bit#(32), Bit#(32)) getParameters( Bit#(32) start, Bi
 	Bit#(32) pointer = (start * 2) % 8;
 
 	Bit#(32) bytes 	  = 0;
-	Bit#(32) bytesTmp = continuous / 4;
-	if ( continuous % 4  == 0 ) begin
+	Bit#(32) bytesTmp = continuous / 16;
+	if ( continuous % 16  == 0 ) begin
 		if ( pointer > 0 ) bytes = (bytesTmp + 1) * 64;
 		else 		   bytes = bytesTmp * 64;
 	end else begin
@@ -212,7 +212,7 @@ module mkDecompressor( DecompressorIfc );
 			if ( bytes > 64 ) begin
 				decompressSub1Q.enq(tuple3(value, pointer, first));
 				oldCaseQ.enq(c);
-				oldParameterQ.enq(tuple5(bytes - 64, pointer, continuous, direction, False));
+				oldParameterQ.enq(tuple5(bytes - 64, pointer, continuous - 16, direction, False));
 				getNewCase <= False;
 			end else begin
 				decompressSub2Q.enq(tuple4(value, pointer, continuous, first));
@@ -228,38 +228,38 @@ module mkDecompressor( DecompressorIfc );
 		let pointer 	= tpl_2(param);
 		let first 	= tpl_3(param);
 
+		Bit#(512) decomp = 0;
 		if ( first ) begin
 			if ( pointer > 0 ) begin
 				if ( pointer == 2 ) begin
-					resultQ.enq(value >> 2);
+					decomp = value >> 2;
 				end else if ( pointer == 4 ) begin
-					resultQ.enq(value >> 4);
+					decomp = value >> 4;
 				end else if ( pointer == 6 ) begin
-					resultQ.enq(value >> 6);
+					decomp = value >> 6;
 				end
-				addr <= addr + 63;
 			end else begin
-				resultQ.enq(value);
-				addr <= addr + 64;
+				decomp = value;
 			end
 		end else begin
 			if ( pointer > 0 ) begin
 				if ( pointer == 2 ) begin
-					resultQ.enq((value << 6) | zeroExtend(remain));
+					decomp = (value << 6) | zeroExtend(remain);
 					remain <= zeroExtend(value[511:506]);
 				end else if ( pointer == 4 ) begin
-					resultQ.enq((value << 4) | zeroExtend(remain));
+					decomp = (value << 4) | zeroExtend(remain);
 					remain <= zeroExtend(value[511:508]);
 				end else if ( pointer == 6 ) begin
-					resultQ.enq((value << 2) | zeroExtend(remain));
+					decomp = (value << 2) | zeroExtend(remain);
 					remain <= zeroExtend(value[511:510]);
 				end
-				addr <= addr + 63;
 			end else begin
-				resultQ.enq(value);
-				addr <= addr + 64;
+				decomp = value;
 			end 
 		end
+
+		addr <= addr + 64;
+		resultQ.enq(decomp);
 	endrule
 
 	rule decompressSub2;
@@ -270,35 +270,35 @@ module mkDecompressor( DecompressorIfc );
 		let continuous	= tpl_3(param);
 		let first	= tpl_4(param);
 
+		Bit#(512) decomp = 0;
 		if ( first ) begin
 			if ( pointer > 0 ) begin
 				if ( pointer == 2 ) begin
-					resultQ.enq(value >> 2);
+					decomp = value >> 2;
 				end else if ( pointer == 4 ) begin
-					resultQ.enq(value >> 4);
+					decomp = value >> 4;
 				end else if ( pointer == 6 ) begin
-					resultQ.enq(value >> 6);
+					decomp = value >> 6;	
 				end
-				addr <= addr + zeroExtend(continuous * 4);
 			end else begin
-				resultQ.enq(value);
-				addr <= addr + zeroExtend(continuous * 4);
+				decomp = value;
 			end 
 		end else begin
 			if ( pointer > 0 ) begin
 				if ( pointer == 2 ) begin
-					resultQ.enq(zeroExtend(remain));
+					decomp = (value << 6) | zeroExtend(remain);
 				end else if ( pointer == 4 ) begin
-					resultQ.enq(zeroExtend(remain));
+					decomp = (value << 4) | zeroExtend(remain);
 				end else if ( pointer == 6 ) begin
-					resultQ.enq(zeroExtend(remain));
+					decomp = (value << 2) | zeroExtend(remain);
 				end
-				addr <= addr + 1;
 			end else begin
-				resultQ.enq(value);
-				addr <= addr + zeroExtend(continuous * 4);
+				decomp = value;
 			end
 		end
+		
+		addr <= addr + zeroExtend(continuous * 4);
+		resultQ.enq(decomp);
 	endrule
 	//------------------------------------------------------------------------------------
 	// Interface
