@@ -72,7 +72,7 @@ module mkDecompressor( DecompressorIfc );
 	// [STAGE 1]
 	// Interpret the head section first
 	//------------------------------------------------------------------------------------
-	FIFO#(Bit#(2)) headQ <- mkFIFO;
+	FIFO#(Bit#(2)) headQ <- mkSizedBRAMFIFO(1024);
 	Reg#(Bit#(32)) headBuf 	   <- mkReg(0);
 	Reg#(Bit#(32)) readHeadCnt <- mkReg(0);
 	Reg#(Bool) readHeadOn <- mkReg(True);
@@ -160,8 +160,12 @@ module mkDecompressor( DecompressorIfc );
 	// [STAGE 2]
 	// Decompress the sequence
 	//------------------------------------------------------------------------------------
-	FIFO#(Bit#(8)) oldCaseQ <- mkFIFO;
-	FIFO#(Tuple5#(Bit#(32), Bit#(32), Bit#(32), Bit#(8), Bool)) oldParameterQ <- mkFIFO;
+	FIFO#(Bit#(8)) oldCaseQ <- mkSizedBRAMFIFO(512);
+	FIFO#(Tuple5#(Bit#(32), Bit#(32), Bit#(32), Bit#(8), Bool)) oldParameterQ <- mkSizedBRAMFIFO(512);
+
+	FIFO#(Tuple3#(Bit#(512), Bit#(32), Bool)) decompressSub1Q 		<- mkSizedBRAMFIFO(512);
+	FIFO#(Tuple4#(Bit#(512), Bit#(32), Bit#(32), Bool)) decompressSub2Q 	<- mkSizedBRAMFIFO(512);
+
 	Reg#(Bit#(64)) addr <- mkReg(268435456);
 	Reg#(Bit#(8)) remain <- mkReg(0);
 	Reg#(Bool) getNewCase <- mkReg(True);
@@ -206,72 +210,93 @@ module mkDecompressor( DecompressorIfc );
 			reqWriteResultQ.enq(MemPortReq{addr:addr, bytes:64});
 
 			if ( bytes > 64 ) begin
-				if ( first ) begin
-					if ( pointer > 0 ) begin
-						if ( pointer == 2 ) begin
-							resultQ.enq(value >> 2);
-						end else if ( pointer == 4 ) begin
-							resultQ.enq(value >> 4);
-						end else if ( pointer == 6 ) begin
-							resultQ.enq(value >> 6);
-						end
-						addr <= addr + 63;
-					end else begin
-						resultQ.enq(value);
-						addr <= addr + 64;
-					end
-				end else begin
-					if ( pointer > 0 ) begin
-						if ( pointer == 2 ) begin
-							resultQ.enq((value << 6) | zeroExtend(remain));
-							remain <= zeroExtend(value[511:506]);
-						end else if ( pointer == 4 ) begin
-							resultQ.enq((value << 4) | zeroExtend(remain));
-							remain <= zeroExtend(value[511:508]);
-						end else if ( pointer == 6 ) begin
-							resultQ.enq((value << 2) | zeroExtend(remain));
-							remain <= zeroExtend(value[511:510]);
-						end
-						addr <= addr + 63;
-					end else begin
-						resultQ.enq(value);
-						addr <= addr + 64;
-					end 
-				end
+				decompressSub1Q.enq(tuple3(value, pointer, first));
 				oldCaseQ.enq(c);
 				oldParameterQ.enq(tuple5(bytes - 64, pointer, continuous, direction, False));
 				getNewCase <= False;
 			end else begin
-				if ( first ) begin
-					if ( pointer > 0 ) begin
-						if ( pointer == 2 ) begin
-							resultQ.enq(value >> 2);
-						end else if ( pointer == 4 ) begin
-							resultQ.enq(value >> 4);
-						end else if ( pointer == 6 ) begin
-							resultQ.enq(value >> 6);
-						end
-						addr <= addr + zeroExtend(continuous * 4);
-					end else begin
-						resultQ.enq(value);
-						addr <= addr + zeroExtend(continuous * 4);
-					end 
-				end else begin
-					if ( pointer > 0 ) begin
-						if ( pointer == 2 ) begin
-							resultQ.enq(zeroExtend(remain));
-						end else if ( pointer == 4 ) begin
-							resultQ.enq(zeroExtend(remain));
-						end else if ( pointer == 6 ) begin
-							resultQ.enq(zeroExtend(remain));
-						end
-						addr <= addr + 1;
-					end else begin
-						resultQ.enq(value);
-						addr <= addr + zeroExtend(continuous * 4);
-					end
-				end
+				decompressSub2Q.enq(tuple4(value, pointer, continuous, first));
 				getNewCase <= True;
+			end
+		end
+	endrule
+
+	rule decompressSub1;
+		decompressSub1Q.deq;
+		let param 	= decompressSub1Q.first;
+		let value 	= tpl_1(param);
+		let pointer 	= tpl_2(param);
+		let first 	= tpl_3(param);
+
+		if ( first ) begin
+			if ( pointer > 0 ) begin
+				if ( pointer == 2 ) begin
+					resultQ.enq(value >> 2);
+				end else if ( pointer == 4 ) begin
+					resultQ.enq(value >> 4);
+				end else if ( pointer == 6 ) begin
+					resultQ.enq(value >> 6);
+				end
+				addr <= addr + 63;
+			end else begin
+				resultQ.enq(value);
+				addr <= addr + 64;
+			end
+		end else begin
+			if ( pointer > 0 ) begin
+				if ( pointer == 2 ) begin
+					resultQ.enq((value << 6) | zeroExtend(remain));
+					remain <= zeroExtend(value[511:506]);
+				end else if ( pointer == 4 ) begin
+					resultQ.enq((value << 4) | zeroExtend(remain));
+					remain <= zeroExtend(value[511:508]);
+				end else if ( pointer == 6 ) begin
+					resultQ.enq((value << 2) | zeroExtend(remain));
+					remain <= zeroExtend(value[511:510]);
+				end
+				addr <= addr + 63;
+			end else begin
+				resultQ.enq(value);
+				addr <= addr + 64;
+			end 
+		end
+	endrule
+
+	rule decompressSub2;
+		decompressSub2Q.deq;
+		let param	= decompressSub2Q.first;
+		let value	= tpl_1(param);
+		let pointer	= tpl_2(param);
+		let continuous	= tpl_3(param);
+		let first	= tpl_4(param);
+
+		if ( first ) begin
+			if ( pointer > 0 ) begin
+				if ( pointer == 2 ) begin
+					resultQ.enq(value >> 2);
+				end else if ( pointer == 4 ) begin
+					resultQ.enq(value >> 4);
+				end else if ( pointer == 6 ) begin
+					resultQ.enq(value >> 6);
+				end
+				addr <= addr + zeroExtend(continuous * 4);
+			end else begin
+				resultQ.enq(value);
+				addr <= addr + zeroExtend(continuous * 4);
+			end 
+		end else begin
+			if ( pointer > 0 ) begin
+				if ( pointer == 2 ) begin
+					resultQ.enq(zeroExtend(remain));
+				end else if ( pointer == 4 ) begin
+					resultQ.enq(zeroExtend(remain));
+				end else if ( pointer == 6 ) begin
+					resultQ.enq(zeroExtend(remain));
+				end
+				addr <= addr + 1;
+			end else begin
+				resultQ.enq(value);
+				addr <= addr + zeroExtend(continuous * 4);
 			end
 		end
 	endrule
