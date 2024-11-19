@@ -53,7 +53,7 @@ module mkDecompressor( DecompressorIfc );
 	FIFO#(Bit#(32))  dataQ 			<- mkSizedBRAMFIFO(2048);
 	FIFO#(Bit#(32))  verbatimQ 		<- mkSizedBRAMFIFO(1024);
 	FIFO#(Bit#(512)) refQ			<- mkSizedBRAMFIFO(1024);
-	FIFO#(Bit#(512)) resultQ 		<- mkSizedBRAMFIFO(1024);
+	FIFO#(Bit#(512)) resultQ 		<- mkSizedBRAMFIFO(2048);
 	//------------------------------------------------------------------------------------
 	// Cycle Counter
 	//------------------------------------------------------------------------------------
@@ -165,7 +165,7 @@ module mkDecompressor( DecompressorIfc );
 	Reg#(Bit#(64)) addr <- mkReg(268435456);
 	Reg#(Bit#(8)) remain <- mkReg(0);
 	Reg#(Bool) getNewCase <- mkReg(True);
-	rule decompress;
+	rule decompressMain;
 		Bit#(8) c = 0;
 		if ( getNewCase ) begin
 			caseQ.deq;
@@ -205,59 +205,59 @@ module mkDecompressor( DecompressorIfc );
 			
 			reqWriteResultQ.enq(MemPortReq{addr:addr, bytes:64});
 
-			if ( first ) begin
-				if ( pointer > 0 ) begin
-					if ( pointer == 2 ) begin
-						resultQ.enq(value >> 2);
-					end else if ( pointer == 4 ) begin
-						resultQ.enq(value >> 4);
-					end else if ( pointer == 6 ) begin
-						resultQ.enq(value >> 6);
-					end
-
-					if ( bytes > 64 ) begin
-						oldCaseQ.enq(c);
-						oldParameterQ.enq(tuple5(bytes - 64, pointer, continuous, direction, False));
+			if ( bytes > 64 ) begin
+				if ( first ) begin
+					if ( pointer > 0 ) begin
+						if ( pointer == 2 ) begin
+							resultQ.enq(value >> 2);
+						end else if ( pointer == 4 ) begin
+							resultQ.enq(value >> 4);
+						end else if ( pointer == 6 ) begin
+							resultQ.enq(value >> 6);
+						end
 						addr <= addr + 63;
-						getNewCase <= False;
 					end else begin
-						addr <= addr + zeroExtend(continuous * 4);
-						getNewCase <= True;
+						resultQ.enq(value);
+						addr <= addr + 64;
 					end
 				end else begin
-					resultQ.enq(value);
-
-					if ( bytes > 64 ) begin
-						oldCaseQ.enq(c);
-						oldParameterQ.enq(tuple5(bytes - 64, pointer, continuous, direction, False));
-						addr <= addr + 64;
-						getNewCase <= False;
-					end else begin
-						addr <= addr + zeroExtend(continuous * 4);
-						getNewCase <= True;
-					end
-				end
-			end else begin
-				if ( pointer > 0 ) begin
-					if ( bytes > 64 ) begin
-						Bit#(8) r = 0;
+					if ( pointer > 0 ) begin
 						if ( pointer == 2 ) begin
 							resultQ.enq((value << 6) | zeroExtend(remain));
-							r = zeroExtend(value[511:506]);
+							remain <= zeroExtend(value[511:506]);
 						end else if ( pointer == 4 ) begin
 							resultQ.enq((value << 4) | zeroExtend(remain));
-							r= zeroExtend(value[511:508]);
+							remain <= zeroExtend(value[511:508]);
 						end else if ( pointer == 6 ) begin
 							resultQ.enq((value << 2) | zeroExtend(remain));
-							r = zeroExtend(value[511:510]);
+							remain <= zeroExtend(value[511:510]);
 						end
-
-						remain <= r;
-						oldCaseQ.enq(c);
-						oldParameterQ.enq(tuple5(bytes - 64, pointer, continuous, direction, False));
 						addr <= addr + 63;
-						getNewCase <= False;
 					end else begin
+						resultQ.enq(value);
+						addr <= addr + 64;
+					end 
+				end
+				oldCaseQ.enq(c);
+				oldParameterQ.enq(tuple5(bytes - 64, pointer, continuous, direction, False));
+				getNewCase <= False;
+			end else begin
+				if ( first ) begin
+					if ( pointer > 0 ) begin
+						if ( pointer == 2 ) begin
+							resultQ.enq(value >> 2);
+						end else if ( pointer == 4 ) begin
+							resultQ.enq(value >> 4);
+						end else if ( pointer == 6 ) begin
+							resultQ.enq(value >> 6);
+						end
+						addr <= addr + zeroExtend(continuous * 4);
+					end else begin
+						resultQ.enq(value);
+						addr <= addr + zeroExtend(continuous * 4);
+					end 
+				end else begin
+					if ( pointer > 0 ) begin
 						if ( pointer == 2 ) begin
 							resultQ.enq(zeroExtend(remain));
 						end else if ( pointer == 4 ) begin
@@ -266,21 +266,12 @@ module mkDecompressor( DecompressorIfc );
 							resultQ.enq(zeroExtend(remain));
 						end
 						addr <= addr + 1;
-						getNewCase <= True;
-					end
-				end else begin
-					resultQ.enq(value);
-
-					if ( bytes > 64 ) begin
-						oldCaseQ.enq(c);
-						oldParameterQ.enq(tuple5(bytes - 64, pointer, continuous, direction, False));
-						addr <= addr + 64;
-						getNewCase <= False;
 					end else begin
+						resultQ.enq(value);
 						addr <= addr + zeroExtend(continuous * 4);
-						getNewCase <= True;
 					end
 				end
+				getNewCase <= True;
 			end
 		end
 	endrule
