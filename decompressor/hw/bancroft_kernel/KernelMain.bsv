@@ -56,6 +56,8 @@ module mkKernelMain(KernelMainIfc);
 	// [Cycle Counter]
 	//------------------------------------------------------------------------------------
 	Reg#(Bit#(32)) cycleCounter <- mkReg(0);
+	Reg#(Bit#(32)) cycleStart <- mkReg(0);
+	Reg#(Bit#(32)) cycleDone <- mkReg(0);
 	rule incCycle;
 		cycleCounter <= cycleCounter + 1;
 	endrule
@@ -82,6 +84,7 @@ module mkKernelMain(KernelMainIfc);
 	Reg#(Bit#(64)) addr <- mkReg(0);
 	rule reqReadData( reqReadDataOn );
 		readReqQs[0].enq(MemPortReq{addr:addr, bytes:64});
+
 		if ( reqReadDataCnt + 1 == fromInteger(valueOf(DataCntTotal512b)) ) begin
 			addr 		<= 0;
 			reqReadDataCnt 	<= 0;
@@ -90,6 +93,7 @@ module mkKernelMain(KernelMainIfc);
 			addr 		<= addressR + 64;
 			reqReadDataCnt 	<= requestReadDataCnt + 1;
 		end
+
 		readDataOn <= True;
 	endrule
 	Reg#(Bit#(32)) readDataCnt <- mkReg(0);
@@ -105,6 +109,7 @@ module mkKernelMain(KernelMainIfc);
 		end else begin
 			readDataCnt <= readDataCnt + 1;
 		end
+		cycleStart <= cycleCounter;
 	endrule
 
 	// Read the 2-bit encoded reference genome [MEMPORT 1]
@@ -155,7 +160,7 @@ module mkKernelMain(KernelMainIfc);
 		let result <- decompressor.reqWriteResult;
 		writeReqQs[0].enq(MemPortReq{addr:result.addr, bytes:result.bytes});
 
-		if ( reqWriteResultCnt + 1 == fromInteger(valueOf(ResultCntTotal512b)) ) begin
+		if ( reqWriteResultCnt == fromInteger(valueOf(ResultCntTotal512b)) ) begin
 			reqWriteResultCnt <= 0;
 			reqWriteResultOn  <= False;
 		end else begin
@@ -171,6 +176,9 @@ module mkKernelMain(KernelMainIfc);
 
 		// System Finish
 		if ( writeResultCnt + 1 == fromInteger(valueOf(ResultCntTotal512b)) ) begin
+			writeReqQs[0].enq(MemPortReq{addr:268435456, bytes:64});
+			writeResultCnt <= writeResultCnt + 1;
+		end else if ( writeResultCnt == fromInteger(valueOf(ResultCntTotal512b)) ) begin
 			writeResultCnt 	<= 0;
 			writeResultOn  	<= False;
 			started		<= False;
