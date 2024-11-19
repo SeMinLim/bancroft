@@ -165,7 +165,7 @@ module mkDecompressor( DecompressorIfc );
 	FIFO#(Tuple3#(Bit#(512), Bit#(32), Bool)) decompressSub1Q               <- mkSizedBRAMFIFO(512);
         FIFO#(Tuple4#(Bit#(512), Bit#(32), Bit#(32), Bool)) decompressSub2Q     <- mkSizedBRAMFIFO(512);
 	FIFO#(Bit#(8)) remainQ <- mkSizedBRAMFIFO(512);
-	Reg#(Bit#(8)) remain <- mkReg(8);
+	Reg#(Bit#(8)) remain <- mkReg(0);
 	Reg#(Bit#(64)) addr <- mkReg(268435456);
 	Reg#(Bool) getNewCase <- mkReg(True);
 	rule decompStart( getNewCase );
@@ -192,6 +192,7 @@ module mkDecompressor( DecompressorIfc );
 			resultQ.enq(zeroExtend(v));
 
 			addr <= addr + 4;
+			getNewCase <= True;
 		end else begin 	       	// [MATCH]
 			refQ.deq;
 			decompParameterQ.deq;
@@ -207,6 +208,8 @@ module mkDecompressor( DecompressorIfc );
 			
 			reqWriteResultQ.enq(MemPortReq{addr:addr, bytes:64});
 			resultQ.enq((value >> 2) | zeroExtend(remain));
+			addr <= addr + 64;
+			remain <= remain + 1;
 			if ( bytes > 64 ) begin
 				//decompressSub1Q.enq(tuple3(value, pointer, first));
 				decompCaseQ.enq(c);
@@ -218,7 +221,7 @@ module mkDecompressor( DecompressorIfc );
 			end
 		end
 	endrule
-
+/*
 	rule decompressSub1;
 		decompressSub1Q.deq;
 		let param = decompressSub1Q.first;
@@ -298,6 +301,7 @@ module mkDecompressor( DecompressorIfc );
 		addr <= addr + zeroExtend(continuous * 4);
 		resultQ.enq(decomp);
 	endrule
+*/
 	//------------------------------------------------------------------------------------
 	// Interface
 	//------------------------------------------------------------------------------------
