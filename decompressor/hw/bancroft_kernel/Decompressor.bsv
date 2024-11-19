@@ -6,6 +6,7 @@ import BRAM::*;
 import BRAMFIFO::*;
 
 import Serializer::*;
+import BLShifter::*;
 
 
 typedef 16	   Head;
@@ -25,9 +26,9 @@ typedef struct {
 } MemPortReq deriving (Eq,Bits);
 
 
-function Tuple3#(Bit#(64), Bit#(32), Bit#(64)) calcPrmtRqst( Bit#(32) idxStrt, Bit#(32) idxCntn );
+function Tuple3#(Bit#(64), Bit#(32), Bit#(32)) calcPrmtRqst( Bit#(32) idxStrt, Bit#(32) idxCntn );
 	Bit#(64) address = (zeroExtend(idxStrt) * 2) / 8;
-	Bit#(64) idxPntr = (zeroExtend(idxStrt) * 2) % 8;
+	Bit#(32) idxPntr = (idxStrt * 2) % 8;
 
 	Bit#(32) readLngtByte 	  = 0;
 	Bit#(32) readLngtByteTmpl = ((idxCntn + 1) / 4);
@@ -52,6 +53,13 @@ endinterface
 (* synthesize *)
 module mkDecompressor( DecompressorIfc );
 	SerializerIfc#(512, 16) serializer512b32b <- mkSerializer;
+	BLShiftIfc#(Bit#(512), 32, 2) shifterLeftDecompressPipe_1  <- mkPipelinedShift(False); // Shift Left
+	BLShiftIfc#(Bit#(512), 32, 2) shifterRightDecompressPipe_1 <- mkPipelinedShift(True);  // Shirt Right
+	BLShiftIfc#(Bit#(512), 32, 2) shifterLeftDecompressPipe_2  <- mkPipelinedShift(False); // Shift Left
+	BLShiftIfc#(Bit#(512), 32, 2) shifterRightDecompressPipe_2 <- mkPipelinedShift(True);  // Shirt Right
+	BLShiftIfc#(Bit#(512), 32, 2) shifterRightDecompressPipe_3 <- mkPipelinedShift(True);  // Shirt Right
+	BLShiftIfc#(Bit#(512), 32, 2) shifterLeft512bComposerPipe_1  <- mkPipelinedShift(False); // Shift Left
+	BLShiftIfc#(Bit#(512), 32, 2) shifterRight512bComposerPipe_2 <- mkPipelinedShift(True);  // Shirt Right
 
 	FIFO#(MemPortReq) rqstRdRefrQ <- mkSizedBRAMFIFO(1024);
 	FIFO#(MemPortReq) rqstWrRsltQ <- mkSizedBRAMFIFO(1024);
@@ -61,12 +69,11 @@ module mkDecompressor( DecompressorIfc );
 	FIFO#(Bit#(512)) rsltQ <- mkSizedBRAMFIFO(1024);
 
 	Reg#(Bit#(32)) pcktHeadTrck <- mkReg(0);
-	Reg#(Bit#(32)) pcktBodyTrck <- mkReg(0);
 	
-	Reg#(Bool) readHeadOn <- mkReg(True);
-	Reg#(Bool) intpHeadOn <- mkReg(False);
-	Reg#(Bool) cntlOrdrOn <- mkReg(False);
-	Reg#(Bool) dcomprssOn <- mkReg(False);
+	Reg#(Bool) readHeadOn	<- mkReg(True);
+	Reg#(Bool) intpHeadOn	<- mkReg(False);
+	Reg#(Bool) cntlOrdrOn	<- mkReg(False);
+	Reg#(Bool) dcomprssOn	<- mkReg(False);
 	//------------------------------------------------------------------------------------
 	// Cycle Counter
 	//------------------------------------------------------------------------------------
@@ -115,7 +122,8 @@ module mkDecompressor( DecompressorIfc );
 		end
 	endrule
 
-	FIFO#(Tuple5#(Bit#(32), Bit#(64), Bit#(32), Bool, Bit#(8))) needPrmtDecdQ <- mkSizedBRAMFIFO(1024);
+	// Bytes, Pointer, Continuous, Direction, First, ShiftOn
+	FIFO#(Tuple5#(Bit#(32), Bit#(32), Bit#(32), Bit#(8), Bool)) needPrmtDecdQ <- mkSizedBRAMFIFO(1024);
 	FIFO#(Bit#(8))	ordrQ	      	<- mkSizedBRAMFIFO(1024);
 	Reg#(Bit#(8))   idxDrctBuf    	<- mkReg(0);
 	Reg#(Bit#(32))  idxStrtBuf    	<- mkReg(0);
@@ -128,34 +136,38 @@ module mkDecompressor( DecompressorIfc );
 		
 		if ( head == 2'b00 ) begin 	    // [UNMATCH]
 			if ( idxDrctBuf != 0 ) begin
-				let p = calcPrmtRqst(idxStrtBuf, idxCntnBuf);	
+				let p = calcPrmtRqst(idxStrtBuf, idxCntnBuf);
+				let address = tpl_1(p);	
+				let bytes   = tpl_2(p);
+				let pointer = tpl_3(p);
 
-				rqstRdRefrQ.enq(MemPortReq{addr:tpl_1(p), bytes:tpl_2(p)});
-				needPrmtDecdQ.enq(tuple5(tpl_2(p), tpl_3(p), idxCntnBuf, True, idxDrctBuf));
-				ordrQ.enq(1);
+				rqstRdRefrQ.enq(MemPortReq{addr:address, bytes:bytes});
+				needPrmtDecdQ.enq(tuple5(bytes, pointer, idxCntnBuf, idxDrctBuf, True));
 			
 				idxDrctBuf <= 0;
 				idxStrtBuf <= 0;
 				idxCntnBuf <= 0;
-			end else begin
-				ordrQ.enq(0);
 			end
 
 			pcktQ.deq;
 			vbtmQ.enq(pcktQ.first);
+			ordrQ.enq(0);
 		end else if ( head == 2'b01 ) begin // [FORWARD NORMAL MATCH]
 			if ( idxDrctBuf != 0 ) begin
 				let p = calcPrmtRqst(idxStrtBuf, idxCntnBuf);
+				let address = tpl_1(p);
+				let bytes   = tpl_2(p);
+				let pointer = tpl_3(p);
 
-				rqstRdRefrQ.enq(MemPortReq{addr:tpl_1(p), bytes:tpl_2(p)});
-				needPrmtDecdQ.enq(tuple5(tpl_2(p), tpl_3(p), idxCntnBuf, True, idxDrctBuf));
-				ordrQ.enq(2);
+				rqstRdRefrQ.enq(MemPortReq{addr:address, bytes:bytes});
+				needPrmtDecdQ.enq(tuple5(bytes, pointer, idxCntnBuf, idxDrctBuf, True));
 			end
 
 			pcktQ.deq;
 			idxStrtBuf <= pcktQ.first;
 			idxDrctBuf <= 1;
 			idxCntnBuf <= 1;
+			ordrQ.enq(1);
 		end else if ( head == 2'b10 ) begin // [CONTINUOUS MATCH]
 			if ( idxDrctBuf == 1 ) begin		// [FORWARD]
 				idxCntnBuf <= idxCntnBuf + 1;
@@ -166,16 +178,19 @@ module mkDecompressor( DecompressorIfc );
 		end else if ( head == 2'b11 ) begin // [REVERSE NORMAL MATCH]
 			if ( idxDrctBuf != 0 ) begin
 				let p = calcPrmtRqst(idxStrtBuf, idxCntnBuf);
+				let address = tpl_1(p);
+				let bytes   = tpl_2(p);
+				let pointer = tpl_3(p);
 
-				rqstRdRefrQ.enq(MemPortReq{addr:tpl_1(p), bytes:tpl_2(p)});
-				needPrmtDecdQ.enq(tuple5(tpl_2(p), tpl_3(p), idxCntnBuf, True, idxDrctBuf));
-				ordrQ.enq(2);
+				rqstRdRefrQ.enq(MemPortReq{addr:address, bytes:bytes});
+				needPrmtDecdQ.enq(tuple5(bytes, pointer, idxCntnBuf, idxDrctBuf, True));
 			end
 
 			pcktQ.deq;
 			idxStrtBuf <= pcktQ.first;
 			idxDrctBuf <= 2;
 			idxCntnBuf <= 1;
+			ordrQ.enq(2);
 		end
 
 		if ( intpHeadCurrCnt + 1 == fromInteger(valueOf(Head)) ) begin
@@ -188,6 +203,7 @@ module mkDecompressor( DecompressorIfc );
 			end
 			intpHeadTotlCnt <= intpHeadTotlCnt + 1;
 		end else begin
+			dcomprssOn 	<= True;
 			cntlOrdrOn 	<= True;
 			intpHeadCurrCnt <= intpHeadCurrCnt + 1;
 			intpHeadTotlCnt <= intpHeadTotlCnt + 1;
@@ -195,143 +211,232 @@ module mkDecompressor( DecompressorIfc );
 	endrule
 	//------------------------------------------------------------------------------------
 	// [STAGE 2]
-	// Decompress the sequence & Send the decompressed data out as 512-bit
+	// Decompress the sequence
 	//------------------------------------------------------------------------------------
-	FIFO#(Tuple5#(Bit#(32), Bit#(64), Bit#(32), Bool, Bit#(8))) dcomprssPrmtQ <- mkFIFO;
-	FIFO#(Tuple4#(Bit#(512), Bit#(32), Bit#(32), Bit#(8)))  dcomprssPipeQ <- mkSizedBRAMFIFO(1024);
-	FIFO#(Bit#(8)) dcomprssOrdrQ <- mkFIFO;
-	rule cntlOrdr( cntlOrdrOn );
-		ordrQ.deq;
-		let ordr = ordrQ.first;
-		
-		if ( ordr != 0 ) begin
-			needPrmtDecdQ.deq;
-			let prmt = needPrmtDecdQ.first;
+	// Pipeline Stage 1
+	// Type 1 => Right Shifter
+	// Type 2 => Left  Shifter
+	//------------------------------------------------------------------------------------
+//	FIFO#(Tuple4#(Bit#(8), Bit#(32), Bit#(32), Bit#(8))) dcomprssPipe_1_Type_1_Q <- mkSizedBRAMFIFO(512);
+//	FIFO#(Tuple4#(Bit#(8), Bit#(32), Bit#(32), Bit#(8))) dcomprssPipe_1_Type_2_Q <- mkSizedBRAMFIFO(512);
+//	FIFO#(Tuple4#(Bit#(8), Bit#(32), Bit#(32), Bit#(8))) dcomprssPipe_2_Type_1_Q <- mkSizedBRAMFIFO(512);
+//	FIFO#(Tuple4#(Bit#(8), Bit#(32), Bit#(32), Bit#(8))) dcomprssPipe_2_Type_2_Q <- mkSizedBRAMFIFO(512);
+//	FIFO#(Tuple4#(Bit#(8), Bit#(32), Bit#(32), Bit#(8))) dcomprssPipe_3_Type_1_Q <- mkSizedBRAMFIFO(512);
+	FIFO#(Tuple5#(Bit#(32), Bit#(32), Bit#(32), Bit#(8), Bool)) dcomprssPrmtQ    <- mkSizedBRAMFIFO(512);
+	FIFO#(Bit#(8)) dcomprssOrdrQ <- mkSizedBRAMFIFO(512);
+	Reg#(Bit#(64))  rsltAddrBuf <- mkReg(268435456);
 
-			dcomprssPrmtQ.enq(prmt);
-
-			cntlOrdrOn <= False;
+//	FIFO#(Tuple3#(Bit#(512), Bit#(32), Bit#(8))) make512bQ <- mkSizedBRAMFIFO(512);
+//	FIFO#(Tuple3#(Bit#(512), Bit#(32), Bit#(8))) make512b_Pipe_1_Q <- mkSizedBRAMFIFO(512);
+//	FIFO#(Tuple3#(Bit#(512), Bit#(32), Bit#(8))) make512b_Pipe_2_Q <- mkSizedBRAMFIFO(512);
+	rule dcomprssMain( dcomprssOn );
+		Bit#(8) ordr = 0;
+		if ( cntlOrdrOn ) begin
+			ordrQ.deq;
+			ordr = ordrQ.first;
+		end else begin
+			dcomprssOrdrQ.deq;
+			ordr = dcomprssOrdrQ.first;
 		end
-
-		dcomprssOrdrQ.enq(ordr);
-		
-		dcomprssOn <= True;
-	endrule
-
-	FIFO#(Tuple3#(Bit#(512), Bit#(32), Bit#(8))) make512bQ <- mkSizedBRAMFIFO(1024);
-	FIFO#(Tuple4#(Bit#(512), Bit#(512), Bit#(32), Bit#(8))) make512bPipeQ <- mkSizedBRAMFIFO(1024);
-	rule dcomprssPipeStage_1( dcomprssOn );
-		dcomprssOrdrQ.deq;
-		let ordr = dcomprssOrdrQ.first;
 	
-		if ( ordr == 0 ) begin 	// [CONTINUOUS UNMATCH]
+		if ( ordr == 0 ) begin 	// [UNMATCH]
 			vbtmQ.deq;
 			let v = vbtmQ.first;
 
-			make512bQ.enq(tuple3(zeroExtend(v), 32, 1));
-			pcktBodyTrck <= pcktBodyTrck + 1;
-		end else begin 	       	// [MATCH THEN UNMATCH OR ANOTHER MATCH]
-			refrQ.deq;
-			dcomprssPrmtQ.deq;
-			let r = refrQ.first;
-			let p = dcomprssPrmtQ.first;
-			let bytes 	= tpl_1(p);
-			let pointer 	= tpl_2(p);
-			let continuous 	= tpl_3(p);
-			let starter	= tpl_4(p);
-			let direction	= tpl_5(p);
-
-			if ( bytes > 64 ) begin
-				if ( starter && (pointer > 0) ) begin
-					r = r >> pointer;
-					continuous = continuous - 3;
-				end
-
-				make512bQ.enq(tuple3(r, 512, direction));
-				dcomprssOrdrQ.enq(ordr);
-				dcomprssPrmtQ.enq(tuple5(bytes - 64, pointer, continuous, False, direction));
-				
-				pcktBodyTrck <= pcktBodyTrck + 1;
+			//make512bQ.enq(tuple3(zeroExtend(v), 32, 1));
+			rqstWrRsltQ.enq(MemPortReq{addr:rsltAddrBuf, bytes:64});
+			rsltQ.enq(zeroExtend(v));
+		end else begin 	       	// [MATCH]
+			Tuple5#(Bit#(32), Bit#(32), Bit#(32), Bit#(8), Bool) param;
+			if ( cntlOrdrOn ) begin
+				needPrmtDecdQ.deq;
+				param = needPrmtDecdQ.first;
 			end else begin
-				Bit#(32) length = 0;
-				if ( starter ) begin
-					length = continuous * 128;
-					r = r >> pointer;
+				dcomprssPrmtQ.deq;
+				param = dcomprssPrmtQ.first;
+			end
+			let bytes 	= tpl_1(param);
+			let pointer 	= tpl_2(param);
+			let continuous 	= tpl_3(param);
+			let direction 	= tpl_4(param);
+			let first	= tpl_5(param);
+		
+			refrQ.deq;
+			let value = refrQ.first;
+			if ( bytes > 64 ) begin
+				if ( first && (pointer > 0) ) begin
+					shifterRightDecompressPipe_1.enq(value, pointer);
+					dcomprssOrdrQ.enq(ordr);
+					dcomprssPrmtQ.enq(tuple5(bytes - 64, pointer, continuous, direction, False));
+					//dcomprssPipe_1_Type_1_Q.enq(tuple4(0, pointer, continuous, direction));
 				end else begin
-					length = truncate(pointer);
+					//make512bQ.enq(tuple3(value, 512, direction));
+					dcomprssOrdrQ.enq(ordr);
+					dcomprssPrmtQ.enq(tuple5(bytes - 64, pointer, continuous, direction, False));
+					rqstWrRsltQ.enq(MemPortReq{addr:rsltAddrBuf, bytes:64});
+					rsltQ.enq(value);
 				end
-
-				Bit#(32) remove = 512 - length;
-
-				dcomprssPipeQ.enq(tuple4(r, remove, length, direction));
-				
-				if ( ordr == 1 ) begin
-					dcomprssOrdrQ.enq(0);
-					dcomprssOn <= False;
+				cntlOrdrOn <= False;
+			end else begin
+				if ( first ) begin
+					shifterRightDecompressPipe_1.enq(value, pointer);
+					//dcomprssPipe_1_Type_1_Q.enq(tuple4(1, pointer, continuous, direction));
+				end else begin
+					shifterLeftDecompressPipe_1.enq(value, (512 - pointer));
+					//dcomprssPipe_1_Type_2_Q.enq(tuple4(0, pointer, continuous, direction));
 				end
 				cntlOrdrOn <= True;
 			end
 		end
 	endrule
-
-	rule dcomprssPipeStage_2;
-		dcomprssPipeQ.deq;
-		let p = dcomprssPipeQ.first;
-		let r		= tpl_1(p);
-		let remove 	= tpl_2(p);
-		let length 	= tpl_3(p);
-		let direction 	= tpl_4(p);
-
-		Bit#(512) rFinal = (r << remove) >> remove;
-
-		dcomprssOn <= True;
-
-		make512bQ.enq(tuple3(rFinal, length, direction));
+	rule shifterRight;
+		shifterRightDecompressPipe_1.deq;
+		let value = shifterRightDecompressPipe_1.first;
+		rqstWrRsltQ.enq(MemPortReq{addr:rsltAddrBuf, bytes:64});
+		rsltQ.enq(value);
 	endrule
+	rule shifterLeft;
+		shifterLeftDecompressPipe_1.deq;
+		let value = shifterLeftDecompressPipe_1.first;
+		rqstWrRsltQ.enq(MemPortReq{addr:rsltAddrBuf, bytes:64});
+		rsltQ.enq(value);
+	endrule
+	//------------------------------------------------------------------------------------
+	// Pipeline Stage 2
+	//------------------------------------------------------------------------------------
+/*	rule dcomprssPipe_1_Type_1;
+		shifterRightDecompressPipe_1.deq;
+		dcomprssPipe_1_Type_1_Q.deq;
+		let value = shifterRightDecompressPipe_1.first;
+		let param = dcomprssPipe_1_Type_1_Q.first;
+		let cases 	= tpl_1(param);
+		let pointer 	= tpl_2(param);
+		let continuous 	= tpl_3(param);
+		let direction 	= tpl_4(param);
 
+		if ( cases == 0 ) begin
+			make512bQ.enq(tuple3(value, 512, direction));
+		end else begin
+			shifterLeftDecompressPipe_2.enq(value, (512 - (continuous * 128)));
+			dcomprssPipe_2_Type_2_Q.enq(tuple4(cases, pointer, continuous, direction));
+		end
+	endrule
+	rule dcomprssPipe_1_Type_2;
+		shifterLeftDecompressPipe_1.deq;
+		dcomprssPipe_1_Type_2_Q.deq;
+		let value = shifterLeftDecompressPipe_1.first;
+		let param = dcomprssPipe_1_Type_2_Q.first;
+		let cases 	= tpl_1(param);
+		let pointer	= tpl_2(param);
+		let continuous	= tpl_3(param);
+		let direction	= tpl_4(param);
+
+		shifterRightDecompressPipe_2.enq(value, (512 - pointer));
+		dcomprssPipe_2_Type_1_Q.enq(tuple4(cases, pointer, continuous, direction));
+	endrule
+	//------------------------------------------------------------------------------------
+	// Pipeline Stage 3
+	//------------------------------------------------------------------------------------
+	rule dcomprssPipe_2_Type_1;
+		shifterRightDecompressPipe_2.deq;
+		dcomprssPipe_2_Type_1_Q.deq;
+		let value = shifterRightDecompressPipe_2.first;
+		let param = dcomprssPipe_2_Type_1_Q.first;
+		let cases 	= tpl_1(param);
+		let pointer 	= tpl_2(param);
+		let continuous 	= tpl_3(param);
+		let direction 	= tpl_4(param);
+		
+		make512bQ.enq(tuple3(value, pointer, direction));
+	endrule
+	rule dcomprssPipe_2_Type_2;
+		shifterLeftDecompressPipe_2.deq;
+		dcomprssPipe_2_Type_2_Q.deq;
+		let value = shifterLeftDecompressPipe_2.first;
+		let param = dcomprssPipe_2_Type_2_Q.first;
+		let cases 	= tpl_1(param);
+		let pointer	= tpl_2(param);
+		let continuous	= tpl_3(param);
+		let direction	= tpl_4(param);
+
+		shifterRightDecompressPipe_3.enq(value, (512 - (continuous * 128)));
+		dcomprssPipe_3_Type_1_Q.enq(tuple4(cases, pointer, continuous, direction));
+	endrule
+	//------------------------------------------------------------------------------------
+	// Pipeline Stage 4
+	//------------------------------------------------------------------------------------
+	rule dcomprssPipe_3_Type_1;
+		shifterRightDecompressPipe_3.deq;
+		dcomprssPipe_3_Type_1_Q.deq;
+		let value = shifterRightDecompressPipe_3.first;
+		let param = dcomprssPipe_3_Type_1_Q.first;
+		let cases 	= tpl_1(param);
+		let pointer 	= tpl_2(param);
+		let continuous 	= tpl_3(param);
+		let direction 	= tpl_4(param);
+		
+		make512bQ.enq(tuple3(value, continuous * 128, direction));
+	endrule
+	//------------------------------------------------------------------------------------
+	// [STAGE 3]
+	// Compose & Send the decompressed data out as 512-bit
+	//------------------------------------------------------------------------------------
 	Reg#(Bit#(512)) rsltBuf     <- mkReg(0);
 	Reg#(Bit#(32))  rsltLngtBuf <- mkReg(0);
 	Reg#(Bit#(64))  rsltAddrBuf <- mkReg(268435456);
 	rule make512bPipeStage_1;
 		make512bQ.deq;
-		let p = make512bQ.first;
-		let r 	      = tpl_1(p);
-		let length    = tpl_2(p);
-		let direction = tpl_3(p);
+		let param	= make512bQ.first;
+		let value	= tpl_1(param);
+		let length    	= tpl_2(param);
+		let direction 	= tpl_3(param);
 
-		Bit#(512) rsltTmpl = 0;
+		Bit#(512) resultTmp = 0;
 		if ( direction == 2 ) begin
-			rsltTmpl = ~(reverseBits(r));
+			resultTmp = ~(reverseBits(value));
 		end else begin
-			rsltTmpl = r;
+			resultTmp = value;
 		end
-
-		Bit#(512) rslt = rsltBuf | (rsltTmpl << rsltLngtBuf);
 		
-		make512bPipeQ.enq(tuple4(rsltTmpl, rslt, length, direction));
+		shifterLeft512bComposerPipe_1.enq(resultTmp, rsltLngtBuf);
+		make512b_Pipe_1_Q.enq(tuple3(value, length, direction));
 	endrule
-	
+
 	rule make512bPipeStage_2;
-		make512bPipeQ.deq;
-		let p = make512bPipeQ.first;
-		let r 	      = tpl_1(p);
-		let rslt      = tpl_2(p);
-		let length    = tpl_3(p);
-		let direction = tpl_4(p);
+		shifterLeft512bComposerPipe_1.deq;
+		make512b_Pipe_1_Q.deq;
+		let resultTmp 	= shifterLeft512bComposerPipe_1.first;
+		let param	= make512b_Pipe_1_Q.first;
+		let value	= tpl_1(param);
+		let length    	= tpl_2(param);
+		let direction 	= tpl_3(param);
+		
+		Bit#(512) results = resultTmp | rsltBuf;
 
 		if ( rsltLngtBuf + length >= 512 ) begin
-			Bit#(32) icld = 512 - rsltLngtBuf;
 			rqstWrRsltQ.enq(MemPortReq{addr:rsltAddrBuf, bytes:64});
-			rsltQ.enq(rslt);
-
-			rsltBuf     <= r >> icld;
-			rsltLngtBuf <= length - icld;
-			rsltAddrBuf <= rsltAddrBuf + 64;	
+			rsltQ.enq(results);
+			shifterRight512bComposerPipe_2.enq(value, (512 - rsltLngtBuf));
+			make512b_Pipe_2_Q.enq(tuple3(value, length, direction));
 		end else begin
-			rsltBuf     <= rslt;
+			rsltBuf     <= results;
 			rsltLngtBuf <= rsltLngtBuf + length;
 		end
 	endrule
+	
+	rule make512bPipeStage_3;
+		shifterRight512bComposerPipe_2.deq;
+		make512b_Pipe_2_Q.deq;
+		let remain	= shifterRight512bComposerPipe_2.first;
+		let param	= make512b_Pipe_2_Q.first;
+		let value	= tpl_1(param);
+		let length    	= tpl_2(param);
+		let direction 	= tpl_3(param);
+
+		rsltBuf     <= remain;
+		rsltLngtBuf <= length - (512 - rsltLngtBuf);
+		rsltAddrBuf <= rsltAddrBuf + 64;	
+	endrule*/
 	//------------------------------------------------------------------------------------
 	// Interface
 	//------------------------------------------------------------------------------------
