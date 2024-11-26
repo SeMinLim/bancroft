@@ -37,8 +37,14 @@ uint64_t seqSizeRmnd = 0;
 
 
 // Reference: hg19From1
-uint64_t refSizeOrg = 2849207900;
-uint64_t refSizeUsd = 2849207900;
+//uint64_t refSizeOrg = 2849207900;
+//uint64_t refSizeUsd = 2849207900;
+// Reference: B73From1
+//uint64_t refSizeOrg = 1973700884;
+//uint64_t refSizeUsd = 1973700884;
+// Reference: GRCm39From1
+uint64_t refSizeOrg = 2543750791;
+uint64_t refSizeUsd = 2543750791;
 
 
 // Required Functions
@@ -329,8 +335,8 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/sequence/HG002_SUB.fastq";
-	char *filenameR = "/mnt/ephemeral/reference/HG19Reference256MersFrom1IndexIncluded.bin";
+	char *filenameS = "/mnt/ephemeral/sequence/longread/fastq/mouse-rep2.fastq";
+	char *filenameR = "/mnt/ephemeral/reference/GRCm39Reference256MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
 	if ( FASTQ ) seqReaderFASTQ( filenameS );
@@ -340,7 +346,8 @@ int main( int argc, char **argv ) {
 	refReader( filenameR );
 
 	// Compression
-	for ( uint64_t stride = 1; stride < 512; stride = stride * 2 ) {
+//	for ( uint64_t stride = 1; stride < 512; stride = stride * 2 ) {
+		uint64_t stride = 16;
 		// Variable initialization
 		seqSizeCmpN = 0;
 		seqSizeCmpI = 0;
@@ -378,7 +385,7 @@ int main( int argc, char **argv ) {
 		}
 		printf( "Elapsed Time: %lf\n", elapsedTime );
 		printf( "---------------------------------------------------------------------\n" );
-	}
+//	}
 
 	return 0;
 }

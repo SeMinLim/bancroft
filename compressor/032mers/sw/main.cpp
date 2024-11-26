@@ -20,7 +20,7 @@ using namespace std;
 #define BINARYRWUNIT 8
 #define CHROMOSOMEUNIT 1
 #define GROUPVARINT 1
-#define FASTQ 0
+#define FASTQ 1
 
 
 string sequence;
@@ -36,8 +36,14 @@ uint64_t seqSizeRmnd = 0;
 
 
 // Reference: hg19From1
-uint64_t refSizeOrg = 2552813890;
-uint64_t refSizeUsd = 2552813890;
+//uint64_t refSizeOrg = 2552813890;
+//uint64_t refSizeUsd = 2552813890;
+// Reference: B73From1
+//uint64_t refSizeOrg = 916513317;
+//uint64_t refSizeUsd = 916513317;
+// Reference: GRCm39
+uint64_t refSizeOrg = 2231482983;
+uint64_t refSizeUsd = 2231482983;
 
 
 // Required Functions
@@ -296,8 +302,8 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/sequence/HG16.fasta";
-	char *filenameR = "/mnt/ephemeral/reference/HG19Reference032MersFrom1IndexIncluded.bin";
+	char *filenameS = "/mnt/ephemeral/sequence/longread/fastq/mouse-rep2.fastq";
+	char *filenameR = "/mnt/ephemeral/reference/GRCm39Reference032MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
 	if ( FASTQ ) seqReaderFASTQ( filenameS );

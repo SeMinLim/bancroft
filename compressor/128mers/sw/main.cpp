@@ -317,7 +317,7 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/sequence/MOUSE_REP1_SUB.fastq";
+	char *filenameS = "/mnt/ephemeral/sequence/longread/fastq/mouse-rep2.fastq";
 	char *filenameR = "/mnt/ephemeral/reference/GRCm39Reference128MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
