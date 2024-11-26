@@ -372,8 +372,8 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/sequence/B73_REP1_SUB.fastq";
-	char *filenameR = "/mnt/ephemeral/reference/B73Reference512MersFrom1IndexIncluded.bin";
+	char *filenameS = "/mnt/ephemeral/sequence/longread/fastq/mouse-rep2.fastq";
+	char *filenameR = "/mnt/ephemeral/reference/GRCm39Reference512MersFrom1IndexIncluded.bin";
 
 	// Read sequence file
 	if ( FASTQ ) seqReaderFASTQ( filenameS );
@@ -383,7 +383,8 @@ int main( int argc, char **argv ) {
 	refReader( filenameR );
 
 	// Compression
-	for ( uint64_t stride = 1; stride < 1024; stride = stride * 2 ) {
+//	for ( uint64_t stride = 1; stride < 1024; stride = stride * 2 ) {
+		uint64_t stride = 16;
 		// Variable initialization
 		seqSizeCmpN = 0;
 		seqSizeCmpI = 0;
@@ -421,7 +422,7 @@ int main( int argc, char **argv ) {
 		}
 		printf( "Elapsed Time: %lf\n", elapsedTime );
 		printf( "---------------------------------------------------------------------\n" );
-	}
+//	}
 
 	return 0;
 }
