@@ -41,11 +41,11 @@ uint64_t seqSizeRmnd = 0;
 //uint64_t refSizeOrg = 2849207900;
 //uint64_t refSizeUsd = 2849207900;
 // Reference: B73From1
-//uint64_t refSizeOrg = 2057831578;
-//uint64_t refSizeUsd = 2057831578;
+uint64_t refSizeOrg = 2057831578;
+uint64_t refSizeUsd = 2057831578;
 // Reference: GRCm39From1
-uint64_t refSizeOrg = 2585719939;
-uint64_t refSizeUsd = 2585719939;
+//uint64_t refSizeOrg = 2585719939;
+//uint64_t refSizeUsd = 2585719939;
 
 
 // Required Functions
@@ -372,8 +372,13 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
+<<<<<<< Updated upstream
 	char *filenameS = "/mnt/ephemeral/sequence/longread/fastq/mouse-rep2.fastq";
 	char *filenameR = "/mnt/ephemeral/reference/GRCm39Reference512MersFrom1IndexIncluded.bin";
+=======
+	char *filenameS = "/mnt/ephemeral/sequence/longread/fastq/maize-B73-rep1.fastq";
+	char *filenameR = "/mnt/ephemeral/reference/B73Reference512MersFrom1IndexIncluded.bin";
+>>>>>>> Stashed changes
 
 	// Read sequence file
 	if ( FASTQ ) seqReaderFASTQ( filenameS );
