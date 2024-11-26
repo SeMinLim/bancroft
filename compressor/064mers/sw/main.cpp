@@ -20,8 +20,8 @@ using namespace std;
 #define BINARYRWUNIT 8
 #define CHROMOSOMEUNIT 1
 #define GROUPVARINT 1
-#define FASTQ 0
-#define HISTOGRAM 1
+#define FASTQ 1
+#define HISTOGRAM 0
 
 
 string sequence;
@@ -38,8 +38,14 @@ uint64_t seqSizeRmnd = 0;
 
 
 // Reference: hg19From1
-uint64_t refSizeOrg = 2773851267;
-uint64_t refSizeUsd = 2773851267;
+//uint64_t refSizeOrg = 2773851267;
+//uint64_t refSizeUsd = 2773851267;
+// Reference: B73From1
+//uint64_t refSizeOrg = 1368121611;
+//uint64_t refSizeUsd = 1368121611;
+// Reference: GRCm39From1
+uint64_t refSizeOrg = 2396111935;
+uint64_t refSizeUsd = 2396111935;
 
 
 // Required Functions
@@ -334,8 +340,8 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
-	char *filenameS = "/mnt/ephemeral/sequence/HG38.fasta";
-	char *filenameR = "/mnt/ephemeral/reference/HG19Reference064MersFrom1IndexIncluded.bin";
+	char *filenameS = "/mnt/ephemeral/sequence/longread/fastq/mouse-rep2.fastq";
+	char *filenameR = "/mnt/ephemeral/reference/GRCm39Reference064MersFrom1IndexIncluded.bin";
 	char *filenameH = "/mnt/ephemeral/data/HG38_HISTOGRAM.csv";
 
 	// Read sequence file

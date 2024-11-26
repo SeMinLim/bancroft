@@ -20,7 +20,7 @@ using namespace std;
 #define BINARYRWUNIT 8
 #define CHROMOSOMEUNIT 1
 #define GROUPVARINT 1
-#define FASTQ 1
+#define FASTQ 0
 
 
 string sequence;
@@ -317,8 +317,13 @@ void compressor_unit_wh( const uint64_t stride ) {
 
 
 int main( int argc, char **argv ) {
+<<<<<<< Updated upstream
 	char *filenameS = "/mnt/ephemeral/sequence/longread/fastq/mouse-rep2.fastq";
 	char *filenameR = "/mnt/ephemeral/reference/GRCm39Reference128MersFrom1IndexIncluded.bin";
+=======
+	char *filenameS = "/mnt/ephemeral/sequence/HG16.fasta";
+	char *filenameR = "/mnt/ephemeral/reference/HG19Reference128MersFrom1IndexIncluded.bin";
+>>>>>>> Stashed changes
 
 	// Read sequence file
 	if ( FASTQ ) seqReaderFASTQ( filenameS );
